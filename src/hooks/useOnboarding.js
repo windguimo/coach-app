@@ -29,11 +29,23 @@ export function useOnboarding() {
     setQuery("");
   };
 
+  const trimmedQuery = query.trim();
+  const queryMatchesExisting = allTopics.some((t) => t.toLowerCase() === trimmedQuery.toLowerCase());
+
   const topics = allTopics.map((label) => ({
     label,
     on: selected.includes(label),
     toggle: () => toggleTopic(label),
   }));
+
+  if (trimmedQuery && !queryMatchesExisting) {
+    topics.unshift({
+      label: `Ajouter « ${trimmedQuery} »`,
+      isCustom: true,
+      on: false,
+      toggle: addCustomTopic,
+    });
+  }
 
   const paces = ONBOARDING_PACES.map((label) => ({
     label,

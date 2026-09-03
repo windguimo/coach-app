@@ -102,6 +102,14 @@
   color: var(--ink);
 }
 
+.chip--custom {
+  border-style: dashed;
+  border-color: var(--ink-4);
+  color: var(--ink-85);
+  display: inline-flex;
+  align-items: center;
+}
+
 .onboarding__paces {
   padding: 26px 20px 0;
 }

@@ -47,7 +47,12 @@ export function OnboardingScreen() {
 
       <div className="onboarding__chips">
         {ob.topics.map((t) => (
-          <button key={t.label} onClick={t.toggle} className={`chip${t.on ? " chip--on" : ""}`}>
+          <button
+            key={t.label}
+            onClick={t.toggle}
+            className={`chip${t.on ? " chip--on" : ""}${t.isCustom ? " chip--custom" : ""}`}
+          >
+            {t.isCustom && <Icon name="plus" size={13} style={{ marginRight: 5 }} />}
             {t.label}
           </button>
         ))}
