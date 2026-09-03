@@ -29,20 +29,21 @@ const LESSON_TOOL = {
       paragraphs: {
         type: "array",
         items: { type: "string" },
-        minItems: 2,
-        maxItems: 2,
-        description: "Exactly two paragraphs of lesson content, 60-100 words each, encouraging and concrete tone.",
+        description: "Exactly two paragraphs (array length must be 2) of lesson content, 60-100 words each, encouraging and concrete tone.",
       },
       takeaway: { type: "string", description: "One memorable sentence summarizing the key idea." },
       quiz: {
         type: "array",
-        minItems: 2,
-        maxItems: 2,
+        description: "Exactly two quiz questions (array length must be 2).",
         items: {
           type: "object",
           properties: {
             prompt: { type: "string" },
-            options: { type: "array", items: { type: "string" }, minItems: 4, maxItems: 4 },
+            options: {
+              type: "array",
+              items: { type: "string" },
+              description: "Exactly four answer options (array length must be 4).",
+            },
             correct_index: { type: "integer", minimum: 0, maximum: 3 },
             explanation: { type: "string", description: "1-2 sentences explaining why the correct option is right." },
           },
