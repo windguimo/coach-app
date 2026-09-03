@@ -1,4 +1,3 @@
-import { ATTENDANCE } from "../data/content";
 import { Icon } from "./Icon";
 import "./ProgressWidgets.css";
 
@@ -25,10 +24,10 @@ export function LevelRing({ level, progressPct, size = 70 }) {
   );
 }
 
-export function Heatmap() {
+export function Heatmap({ cells }) {
   return (
     <div className="heatmap">
-      {ATTENDANCE.map((v, i) => (
+      {cells.map((v, i) => (
         <div key={i} className="heatmap__cell" style={{ background: v == null ? "var(--ink-07)" : `rgba(198,240,74,${v})` }} />
       ))}
     </div>

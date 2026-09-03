@@ -1,12 +1,13 @@
 import { useLocation, Link } from "react-router-dom";
 import { Icon } from "./Icon";
+import { supabase } from "../lib/supabaseClient";
 import "./BottomTabBar.css";
 
 const TABS = [
   { id: "today", label: "Aujourd'hui", icon: "sun-horizon", to: "/today" },
   { id: "planning", label: "Planning", icon: "calendar-blank", to: null },
   { id: "progress", label: "Progression", icon: "chart-line-up", to: "/progress" },
-  { id: "profile", label: "Profil", icon: "user", to: null },
+  { id: "profile", label: "Profil", icon: "user", to: null, action: () => supabase.auth.signOut(), title: "Se déconnecter" },
 ];
 
 export function BottomTabBar() {
@@ -23,11 +24,21 @@ export function BottomTabBar() {
             {active && <span className="tabbar__mark" />}
           </>
         );
-        return tab.to ? (
-          <Link key={tab.id} to={tab.to} className={`tabbar__item${active ? " tabbar__item--active" : ""}`}>
-            {content}
-          </Link>
-        ) : (
+        if (tab.to) {
+          return (
+            <Link key={tab.id} to={tab.to} className={`tabbar__item${active ? " tabbar__item--active" : ""}`}>
+              {content}
+            </Link>
+          );
+        }
+        if (tab.action) {
+          return (
+            <button key={tab.id} onClick={tab.action} className="tabbar__item" title={tab.title}>
+              {content}
+            </button>
+          );
+        }
+        return (
           <span key={tab.id} className="tabbar__item" title="Bientôt disponible">
             {content}
           </span>

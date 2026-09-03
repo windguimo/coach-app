@@ -1,3 +1,30 @@
+.today-loading {
+  padding: 60px;
+  color: var(--ink-45);
+  font-size: 14px;
+}
+
+.today-empty {
+  padding: 60px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.today-empty h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.today-empty p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--ink-62);
+}
+
 /* Shared bits */
 .accent-tick {
   width: 14px;

@@ -2,111 +2,146 @@ import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { Heatmap, LevelRing, MasteryList, MilestoneChips } from "../components/ProgressWidgets";
 import { useIsDesktop } from "../hooks/useIsDesktop";
-import {
-  LEVEL,
-  MASTERY,
-  MILESTONES_DASHBOARD,
-  SUBJECTS,
-  TODAY_SESSION,
-  UPCOMING_REVIEWS,
-  WEEK,
-} from "../data/content";
+import { useProfile, levelFromXp } from "../hooks/useProfile";
+import { useSubjects } from "../hooks/useSubjects";
+import { useNotions } from "../hooks/useNotions";
+import { usePlan } from "../hooks/usePlan";
+import { useActivity } from "../hooks/useActivity";
+import { useMilestones } from "../hooks/useMilestones";
+import { subjectMasteryPct } from "../lib/mastery";
 import "./TodayScreen.css";
+
+function useTodayData() {
+  const { profile, loading: pLoading } = useProfile();
+  const { subjects, loading: sLoading } = useSubjects();
+  const { notions, loading: nLoading } = useNotions();
+  const { days, today, loading: planLoading } = usePlan();
+  const { cells, loading: aLoading } = useActivity();
+  const { milestones, loading: mLoading } = useMilestones();
+
+  const loading = pLoading || sLoading || nLoading || planLoading || aLoading || mLoading;
+  return { profile, subjects, notions, days, today, cells, milestones, loading };
+}
 
 export function TodayScreen() {
   const isDesktop = useIsDesktop();
-  return isDesktop ? <TodayDesktop /> : <TodayMobile />;
+  const data = useTodayData();
+
+  if (data.loading) return <div className="today-loading">Chargement…</div>;
+  if (data.subjects.length === 0) return <EmptyOnboardingPrompt />;
+
+  return isDesktop ? <TodayDesktop {...data} /> : <TodayMobile {...data} />;
 }
 
-function SessionTasks({ dense }) {
+function EmptyOnboardingPrompt() {
   return (
-    <div className={`session-tasks${dense ? " session-tasks--grid" : ""}`}>
-      {TODAY_SESSION.tasks.map((t) => (
-        <div className="session-task" key={t.label}>
-          <Icon name={t.icon} size={dense ? 18 : 17} />
-          <div className="session-task__label">{t.label}</div>
-          <div className="session-task__detail">{t.detail}</div>
-        </div>
-      ))}
+    <div className="today-empty">
+      <h2>Aucun sujet pour l'instant</h2>
+      <p>Choisissez ce sur quoi vous voulez progresser pour que je construise votre premier planning.</p>
+      <Link to="/onboarding" className="btn-accent" style={{ width: "fit-content" }}>
+        Configurer mes sujets
+        <Icon name="arrow-right" size={15} />
+      </Link>
     </div>
   );
 }
 
-// ───────────────────────── Desktop (7a) ─────────────────────────
+function SessionCTA({ today }) {
+  if (!today || !today.subject_id) {
+    return <div className="quiz-hint">Rien de prévu aujourd'hui — profitez-en pour réviser une notion.</div>;
+  }
+  return (
+    <Link to={`/session?subject=${today.subject_id}`} className="btn-accent">
+      Commencer
+      <Icon name="arrow-right" size={15} />
+    </Link>
+  );
+}
 
-function TodayDesktop() {
+// ───────────────────────── Desktop ─────────────────────────
+
+function TodayDesktop({ profile, subjects, notions, days, today, cells, milestones }) {
+  const { level, xpToNext, progressPct } = levelFromXp(profile.xp);
+  const doneCount = days.filter((d) => d.status === "done").length;
+  const remainingMinutes = days.filter((d) => d.status === "today" || d.status === "upcoming").reduce((s, d) => s + (d.minutes || 0), 0);
+  const recentNotions = notions.slice(-5).reverse();
+
   return (
     <div className="today-desktop">
       <div className="today-desktop__center">
         <div className="today-desktop__header">
           <div>
-            <div className="eyebrow">Mardi 3 septembre</div>
-            <h2 className="today-desktop__greeting">Bonjour Camille.</h2>
-            <p className="today-desktop__subtitle">Quinze minutes aujourd'hui, et la semaine est tenue.</p>
+            <div className="eyebrow">
+              {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+            </div>
+            <h2 className="today-desktop__greeting">Bonjour {profile.display_name}.</h2>
+            <p className="today-desktop__subtitle">{profile.daily_minutes} minutes aujourd'hui, et la semaine est tenue.</p>
           </div>
           <span className="streak-badge">
             <Icon name="flame" size={14} />
-            Série de {TODAY_SESSION.streakDays} jours
+            Série de {profile.streak_days} jour{profile.streak_days > 1 ? "s" : ""}
           </span>
         </div>
 
         <div className="session-card">
           <div className="session-card__eyebrow">
             <span className="accent-tick" />
-            <div className="eyebrow">Séance du jour · {TODAY_SESSION.minutes} min</div>
+            <div className="eyebrow">Séance du jour · {profile.daily_minutes} min</div>
           </div>
           <div className="session-card__row">
             <div>
-              <h3 className="session-card__title">{TODAY_SESSION.subject}</h3>
-              <div className="session-card__module">{TODAY_SESSION.moduleLine}</div>
+              <h3 className="session-card__title">{today?.subjects?.label ?? today?.label ?? "—"}</h3>
+              <div className="session-card__module">Contenu généré pour votre niveau</div>
             </div>
-            <Link to="/session" className="btn-accent">
-              Commencer
-              <Icon name="arrow-right" size={15} />
-            </Link>
+            <SessionCTA today={today} />
           </div>
-          <SessionTasks dense />
         </div>
 
         <div className="today-desktop__week-header">
-          <div className="section-label">Votre semaine</div>
-          <div className="today-desktop__week-meta">3 séances sur 5 · 45 min restantes</div>
+          <div className="section-label">Vos 7 prochains jours</div>
+          <div className="today-desktop__week-meta">
+            {doneCount} séance{doneCount > 1 ? "s" : ""} faite{doneCount > 1 ? "s" : ""} · {remainingMinutes} min restantes
+          </div>
         </div>
         <div className="week-grid">
-          {WEEK.map((d) => (
-            <div key={d.day} className={`week-cell week-cell--${d.state}`}>
+          {days.map((d) => (
+            <div key={d.id} className={`week-cell week-cell--${d.status}`}>
               <div className="week-cell__date">
-                {d.day} {d.date}
+                {d.dayLabel} {d.dateNum}
               </div>
-              {d.state === "done" && <Icon name="check" size={15} style={{ marginTop: 24, display: "block" }} />}
-              {d.state === "today" && <div className="week-cell__now">En cours</div>}
-              <div className="week-cell__label">{d.label}</div>
-              {"minutes" in d && <div className="week-cell__minutes">{d.minutes} min</div>}
+              {d.status === "done" && <Icon name="check" size={15} style={{ marginTop: 24, display: "block" }} />}
+              {d.status === "today" && <div className="week-cell__now">En cours</div>}
+              <div className="week-cell__label">{d.subjects?.label ?? d.label ?? "—"}</div>
+              {d.minutes != null && <div className="week-cell__minutes">{d.minutes} min</div>}
             </div>
           ))}
         </div>
 
-        <div className="section-label" style={{ marginTop: 32 }}>
-          À revoir bientôt
-        </div>
-        <div className="reviews-list">
-          {UPCOMING_REVIEWS.map((r) => (
-            <div className="reviews-row" key={r.title}>
-              <span className="reviews-row__when">{r.when}</span>
-              <span className="reviews-row__title">{r.title}</span>
-              <span className="reviews-row__subject">{r.subject}</span>
+        {recentNotions.length > 0 && (
+          <>
+            <div className="section-label" style={{ marginTop: 32 }}>
+              Vos notions
             </div>
-          ))}
-        </div>
+            <div className="reviews-list">
+              {recentNotions.map((n) => (
+                <div className="reviews-row" key={n.id}>
+                  <span className="reviews-row__when">{n.status_label}</span>
+                  <span className="reviews-row__title">{n.label}</span>
+                  <span className="reviews-row__subject">{subjects.find((s) => s.id === n.subject_id)?.label}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <aside className="today-desktop__rail">
         <div className="level-block">
-          <LevelRing level={LEVEL.level} progressPct={LEVEL.progressPct} />
+          <LevelRing level={level} progressPct={progressPct} />
           <div>
-            <div className="level-block__title">{LEVEL.title}</div>
+            <div className="level-block__title">Niveau {level}</div>
             <div className="level-block__xp">
-              {LEVEL.xp.toLocaleString("fr-FR")} XP · {LEVEL.xpToNext} avant le {LEVEL.level + 1}
+              {profile.xp.toLocaleString("fr-FR")} XP · {xpToNext} avant le {level + 1}
             </div>
           </div>
         </div>
@@ -114,71 +149,64 @@ function TodayDesktop() {
         <div className="section-label" style={{ marginTop: 28 }}>
           Assiduité — 8 semaines
         </div>
-        <Heatmap />
+        <Heatmap cells={cells} />
 
-        <div className="section-label" style={{ marginTop: 28 }}>
-          Maîtrise par notion
-        </div>
-        <MasteryList items={MASTERY.slice(0, 3)} />
+        {notions.length > 0 && (
+          <>
+            <div className="section-label" style={{ marginTop: 28 }}>
+              Maîtrise par notion
+            </div>
+            <MasteryList items={notions.slice(0, 3).map((n) => ({ notion: n.label, level: n.status_label, filled: n.filled }))} />
+          </>
+        )}
 
-        <div className="milestones-card">
-          <div className="milestones-card__title">Deux paliers atteints cette semaine</div>
-          <div className="milestones-card__row">
-            <MilestoneChips items={MILESTONES_DASHBOARD} />
+        {milestones.some((m) => m.reached) && (
+          <div className="milestones-card">
+            <div className="milestones-card__title">Vos paliers</div>
+            <div className="milestones-card__row">
+              <MilestoneChips items={milestones.map((m) => ({ icon: m.icon, label: m.label, reached: m.reached }))} />
+            </div>
           </div>
-        </div>
+        )}
       </aside>
     </div>
   );
 }
 
-// ───────────────────────── Mobile (6a) ─────────────────────────
+// ───────────────────────── Mobile ─────────────────────────
 
-function TodayMobile() {
+function TodayMobile({ profile, subjects, notions, today }) {
   return (
     <div className="today-mobile">
       <div className="today-mobile__topline">
-        <div className="eyebrow">Mardi 3 septembre</div>
+        <div className="eyebrow">{new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</div>
         <span className="streak-badge streak-badge--sm">
           <Icon name="flame" size={13} />
-          {TODAY_SESSION.streakDays} jours
+          {profile.streak_days} jour{profile.streak_days > 1 ? "s" : ""}
         </span>
       </div>
-      <h2 className="today-mobile__greeting">Bonjour Camille.</h2>
-      <p className="today-mobile__subtitle">Quinze minutes aujourd'hui, et la semaine est tenue.</p>
+      <h2 className="today-mobile__greeting">Bonjour {profile.display_name}.</h2>
+      <p className="today-mobile__subtitle">{profile.daily_minutes} minutes aujourd'hui, et la semaine est tenue.</p>
 
       <div className="session-card session-card--mobile">
         <div className="session-card__eyebrow">
           <span className="accent-tick" />
-          <div className="eyebrow">Séance du jour · {TODAY_SESSION.minutes} min</div>
+          <div className="eyebrow">Séance du jour · {profile.daily_minutes} min</div>
         </div>
-        <h3 className="session-card__title session-card__title--mobile">{TODAY_SESSION.subject}</h3>
-        <div className="session-card__module">{TODAY_SESSION.moduleLine}</div>
-        <div className="session-tasks--list">
-          {TODAY_SESSION.tasks.map((t, i) => (
-            <div key={t.label}>
-              <div className="session-task-row">
-                <Icon name={t.icon} size={17} />
-                <span className="session-task-row__label">{t.label} — {t.detail.split(" · ")[0]}</span>
-                <span className="session-task-row__time">{t.detail.split(" · ")[1]}</span>
-              </div>
-              {i < TODAY_SESSION.tasks.length - 1 && <div className="session-task-row__divider" />}
-            </div>
-          ))}
+        <h3 className="session-card__title session-card__title--mobile">{today?.subjects?.label ?? today?.label ?? "—"}</h3>
+        <div className="session-card__module">Contenu généré pour votre niveau</div>
+        <div style={{ marginTop: 16 }}>
+          <SessionCTA today={today} />
         </div>
-        <Link to="/session" className="btn-accent" style={{ marginTop: 16, width: "100%" }}>
-          Commencer
-          <Icon name="arrow-right" size={15} />
-        </Link>
       </div>
 
       <div className="stat-cards">
         <div className="stat-card">
-          <div className="stat-card__value">{LEVEL.xp.toLocaleString("fr-FR")}</div>
+          <div className="stat-card__value">{profile.xp.toLocaleString("fr-FR")}</div>
           <div className="stat-card__label">XP</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card__value">Niveau {LEVEL.level}</div>
+          <div className="stat-card__value">Niveau {levelFromXp(profile.xp).level}</div>
           <div className="stat-card__label">Praticien</div>
         </div>
       </div>
@@ -188,20 +216,23 @@ function TodayMobile() {
           Vos sujets
         </div>
         <div className="subjects-list">
-          {SUBJECTS.map((s) => (
-            <div key={s.id}>
-              <div className="subjects-list__row">
-                <span>{s.labelLong}</span>
-                <span className="subjects-list__pct">{s.pct} %</span>
+          {subjects.map((s) => {
+            const pct = subjectMasteryPct(s, notions);
+            return (
+              <div key={s.id}>
+                <div className="subjects-list__row">
+                  <span>{s.label}</span>
+                  <span className="subjects-list__pct">{pct} %</span>
+                </div>
+                <div className="subjects-list__track">
+                  <div
+                    className="subjects-list__fill"
+                    style={{ width: `${pct}%`, background: s.tone === "accent" ? "var(--accent)" : "var(--neutral-mark)" }}
+                  />
+                </div>
               </div>
-              <div className="subjects-list__track">
-                <div
-                  className="subjects-list__fill"
-                  style={{ width: `${s.pct}%`, background: s.tone === "accent" ? "var(--accent)" : "var(--neutral-mark)" }}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

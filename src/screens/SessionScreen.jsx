@@ -1,34 +1,113 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { useIsDesktop } from "../hooks/useIsDesktop";
-import { useQuiz } from "../hooks/useQuiz";
-import { COURSE } from "../data/content";
+import { useGeneratedSession } from "../hooks/useGeneratedSession";
 import "./SessionScreen.css";
 
-export function SessionScreen() {
-  const isDesktop = useIsDesktop();
-  const quiz = useQuiz();
-  return isDesktop ? <SessionDesktop quiz={quiz} /> : <SessionMobile quiz={quiz} />;
+function optionKind(i, correctIndex, picked, answered) {
+  if (!answered) return "idle";
+  if (i === correctIndex) return "correct";
+  if (i === picked) return "wrong";
+  return "dim";
 }
 
-function QuizOptions({ options, size = "md" }) {
+function useQuizFlow(quizQuestions, recordAttempt) {
+  const [qi, setQi] = useState(0);
+  const [picked, setPicked] = useState(null);
+  const [result, setResult] = useState(null); // { correct, xp_awarded, xp_total, streak_days }
+  const [submitting, setSubmitting] = useState(false);
+
+  const question = quizQuestions?.[qi];
+  const answered = picked !== null;
+  const isLast = qi === (quizQuestions?.length ?? 1) - 1;
+
+  const pick = async (i) => {
+    if (picked !== null || !question) return;
+    setPicked(i);
+    setSubmitting(true);
+    try {
+      const r = await recordAttempt(question.id, i);
+      setResult(r);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const next = () => {
+    setQi((n) => n + 1);
+    setPicked(null);
+    setResult(null);
+  };
+
+  return { question, qi, answered, isLast, picked, result, submitting, pick, next };
+}
+
+function QuizOptions({ question, picked, answered, onPick }) {
   return (
     <div className="quiz-options">
-      {options.map((opt) => (
-        <button key={opt.label} onClick={opt.pick} className={`quiz-option quiz-option--${opt.kind} quiz-option--${size}`}>
-          <span className="quiz-option__label">{opt.label}</span>
-          <span className="quiz-option__mark">{opt.mark}</span>
+      {question.options.map((label, i) => (
+        <button
+          key={i}
+          onClick={() => onPick(i)}
+          className={`quiz-option quiz-option--${optionKind(i, question.correct_index, picked, answered)}`}
+        >
+          <span className="quiz-option__label">{label}</span>
+          <span className="quiz-option__mark">{answered ? (i === question.correct_index ? "✓" : i === picked ? "×" : "") : ""}</span>
         </button>
       ))}
     </div>
   );
 }
 
-// ───────────────────────── Desktop (7b) ─────────────────────────
+export function SessionScreen() {
+  const isDesktop = useIsDesktop();
+  const [params] = useSearchParams();
+  const subjectId = params.get("subject");
+  const { data, loading, error, recordAttempt, regenerate } = useGeneratedSession(subjectId);
+  const quiz = useQuizFlow(data?.quiz_questions, recordAttempt);
 
-function SessionDesktop({ quiz }) {
+  if (!subjectId) {
+    return (
+      <div className="session-empty">
+        <p>Aucun sujet sélectionné.</p>
+        <Link to="/today" className="btn-accent">
+          Retour à Aujourd'hui
+        </Link>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="session-empty">
+        <p>Claude prépare votre séance…</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="session-empty">
+        <p>{error || "Impossible de générer la séance."}</p>
+        <button className="btn-accent" onClick={regenerate}>
+          Réessayer
+        </button>
+      </div>
+    );
+  }
+
+  return isDesktop ? (
+    <SessionDesktop courseModule={data.course_module} quiz={quiz} />
+  ) : (
+    <SessionMobile quiz={quiz} />
+  );
+}
+
+// ───────────────────────── Desktop ─────────────────────────
+
+function SessionDesktop({ courseModule, quiz }) {
   const navigate = useNavigate();
-  const minsLeft = `${quiz.answered ? 8 : 9} min restantes`;
 
   return (
     <div className="session-desktop">
@@ -37,23 +116,12 @@ function SessionDesktop({ quiz }) {
           <Icon name="arrow-left" size={18} />
         </button>
         <div>
-          <div className="session-desktop__title">Négociation commerciale — Ancrer un prix</div>
-          <div className="session-desktop__subtitle">Module 3 sur 8 · séance du 3 septembre</div>
+          <div className="session-desktop__title">{courseModule.title}</div>
+          <div className="session-desktop__subtitle">Généré par Claude pour votre niveau</div>
         </div>
-        <div className="session-desktop__progress">
-          <div className="session-desktop__progress-line">
-            <span>Étape 2 sur 3</span>
-            <span>{minsLeft}</span>
-          </div>
-          <div className="step-bar">
-            <div className="step-bar__seg step-bar__seg--on" />
-            <div className="step-bar__seg step-bar__seg--on" />
-            <div className="step-bar__seg" />
-          </div>
-        </div>
-        <span className="streak-pill">
+        <span className="streak-pill" style={{ marginLeft: "auto" }}>
           <Icon name="lightning" size={13} />
-          {quiz.streak} d'affilée
+          question {quiz.qi + 1} sur {2}
         </span>
       </header>
 
@@ -62,64 +130,69 @@ function SessionDesktop({ quiz }) {
           <div className="course-content">
             <div className="course-content__eyebrow">
               <span className="accent-tick" />
-              <div className="eyebrow">{COURSE.eyebrow}</div>
+              <div className="eyebrow">{courseModule.eyebrow}</div>
             </div>
-            <h2 className="course-content__title">{COURSE.title}</h2>
-            {COURSE.paragraphs.map((p, i) => (
+            <h2 className="course-content__title">{courseModule.title}</h2>
+            {courseModule.paragraphs.map((p, i) => (
               <p className="course-content__p" key={i}>
                 {p}
               </p>
             ))}
             <div className="course-content__takeaway">
               <div className="eyebrow" style={{ color: "var(--ink-5)" }}>
-                {COURSE.takeawayLabel}
+                À retenir
               </div>
-              <div className="course-content__takeaway-text">{COURSE.takeaway}</div>
-            </div>
-            <div className="course-content__footer">
-              <span>
-                <Icon name="sparkle" size={14} /> {COURSE.note}
-              </span>
-              <span className="course-content__save">
-                <Icon name="bookmark-simple" size={15} /> Enregistrer
-              </span>
+              <div className="course-content__takeaway-text">{courseModule.takeaway}</div>
             </div>
           </div>
         </div>
 
         <div className="session-desktop__quiz">
-          <div className="course-content__eyebrow">
-            <span className="accent-tick" />
-            <div className="eyebrow">Quiz · {quiz.stepLabel}</div>
-          </div>
-          <h3 className="session-desktop__prompt">{quiz.prompt}</h3>
-          <QuizOptions options={quiz.options} />
-
-          {quiz.answered && (
-            <div className="verdict-card">
-              <div className="verdict-card__head">
-                <span className="verdict-card__tick" />
-                <span>{quiz.verdict}</span>
+          {quiz.question ? (
+            <>
+              <div className="course-content__eyebrow">
+                <span className="accent-tick" />
+                <div className="eyebrow">Quiz · question {quiz.qi + 1} sur 2</div>
               </div>
-              <p className="verdict-card__why">{quiz.why}</p>
-            </div>
-          )}
+              <h3 className="session-desktop__prompt">{quiz.question.prompt}</h3>
+              <QuizOptions question={quiz.question} picked={quiz.picked} answered={quiz.answered} onPick={quiz.pick} />
 
-          <div className="session-desktop__quiz-spacer" />
+              {quiz.answered && quiz.result && (
+                <div className="verdict-card">
+                  <div className="verdict-card__head">
+                    <span className="verdict-card__tick" />
+                    <span>{quiz.result.correct ? "Bien vu." : "Presque — voilà pourquoi."}</span>
+                  </div>
+                  <p className="verdict-card__why">{quiz.question.explanation}</p>
+                </div>
+              )}
 
-          {quiz.answered ? (
-            <div>
-              <div className="quiz-footer-line">
-                <span>{quiz.xpLine}</span>
-                <span>Notion ajoutée à vos révisions</span>
-              </div>
-              <button onClick={quiz.next} className="btn-accent" style={{ width: "100%" }}>
-                Question suivante
-                <Icon name="arrow-right" size={15} />
-              </button>
-            </div>
+              <div className="session-desktop__quiz-spacer" />
+
+              {quiz.answered ? (
+                <div>
+                  <div className="quiz-footer-line">
+                    <span>+{quiz.result?.xp_awarded ?? 0} XP</span>
+                    <span>Série : {quiz.result?.streak_days ?? "—"} jours</span>
+                  </div>
+                  {quiz.isLast ? (
+                    <Link to="/today" className="btn-accent" style={{ width: "100%" }}>
+                      Terminer la séance
+                      <Icon name="arrow-right" size={15} />
+                    </Link>
+                  ) : (
+                    <button onClick={quiz.next} className="btn-accent" style={{ width: "100%" }}>
+                      Question suivante
+                      <Icon name="arrow-right" size={15} />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="quiz-hint">{quiz.submitting ? "…" : "Répondez quand vous voulez — le cours reste à gauche."}</div>
+              )}
+            </>
           ) : (
-            <div className="quiz-hint">Répondez quand vous voulez — le cours reste à gauche.</div>
+            <div className="quiz-hint">Pas de quiz pour ce module.</div>
           )}
         </div>
       </div>
@@ -127,11 +200,17 @@ function SessionDesktop({ quiz }) {
   );
 }
 
-// ───────────────────────── Mobile (6b) ─────────────────────────
-
-const MOBILE_SEGMENTS = ["on", "on", "dim", "off", "off", "off"];
+// ───────────────────────── Mobile ─────────────────────────
 
 function SessionMobile({ quiz }) {
+  if (!quiz.question) {
+    return (
+      <div className="session-empty">
+        <p>Pas de quiz pour ce module.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="session-mobile">
       <div className="session-mobile__header">
@@ -139,32 +218,27 @@ function SessionMobile({ quiz }) {
           <Icon name="x" size={19} style={{ color: "var(--ink-45)" }} />
         </Link>
         <div className="step-bar step-bar--mobile">
-          {MOBILE_SEGMENTS.map((s, i) => (
-            <div key={i} className={`step-bar__seg step-bar__seg--${s}`} />
-          ))}
-        </div>
-        <div className="session-mobile__streak">
-          <Icon name="lightning" size={14} />
-          <span>{quiz.streak}</span>
+          <div className={`step-bar__seg step-bar__seg--${quiz.qi >= 0 ? "on" : "off"}`} />
+          <div className={`step-bar__seg step-bar__seg--${quiz.qi >= 1 ? "on" : "off"}`} />
         </div>
       </div>
 
       <div className="session-mobile__prompt-block">
-        <div className="eyebrow">Négociation · {quiz.stepLabel}</div>
-        <h3 className="session-mobile__prompt">{quiz.prompt}</h3>
+        <div className="eyebrow">Question {quiz.qi + 1} sur 2</div>
+        <h3 className="session-mobile__prompt">{quiz.question.prompt}</h3>
       </div>
 
       <div className="session-mobile__options">
-        <QuizOptions options={quiz.options} size="lg" />
+        <QuizOptions question={quiz.question} picked={quiz.picked} answered={quiz.answered} onPick={quiz.pick} />
       </div>
 
-      {quiz.answered && (
+      {quiz.answered && quiz.result && (
         <div className="verdict-card verdict-card--mobile">
           <div className="verdict-card__head">
             <span className="verdict-card__tick" />
-            <span>{quiz.verdict}</span>
+            <span>{quiz.result.correct ? "Bien vu." : "Presque — voilà pourquoi."}</span>
           </div>
-          <p className="verdict-card__why">{quiz.why}</p>
+          <p className="verdict-card__why">{quiz.question.explanation}</p>
         </div>
       )}
 
@@ -173,18 +247,23 @@ function SessionMobile({ quiz }) {
       {quiz.answered ? (
         <div className="session-mobile__footer">
           <div className="quiz-footer-line">
-            <span>{quiz.xpLine}</span>
-            <span>Notion ajoutée à vos révisions</span>
+            <span>+{quiz.result?.xp_awarded ?? 0} XP</span>
+            <span>Série : {quiz.result?.streak_days ?? "—"} jours</span>
           </div>
-          <button onClick={quiz.next} className="btn-accent" style={{ width: "100%", height: 46 }}>
-            Question suivante
-            <Icon name="arrow-right" size={15} />
-          </button>
+          {quiz.isLast ? (
+            <Link to="/today" className="btn-accent" style={{ width: "100%", height: 46 }}>
+              Terminer la séance
+              <Icon name="arrow-right" size={15} />
+            </Link>
+          ) : (
+            <button onClick={quiz.next} className="btn-accent" style={{ width: "100%", height: 46 }}>
+              Question suivante
+              <Icon name="arrow-right" size={15} />
+            </button>
+          )}
         </div>
       ) : (
-        <div className="session-mobile__footer quiz-hint">
-          Touchez une réponse — aucune pénalité, on cherche juste où vous en êtes.
-        </div>
+        <div className="session-mobile__footer quiz-hint">Touchez une réponse.</div>
       )}
     </div>
   );

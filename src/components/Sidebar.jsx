@@ -1,17 +1,24 @@
 import { useLocation, Link } from "react-router-dom";
 import { Icon } from "./Icon";
-import { SUBJECTS, USER } from "../data/content";
+import { useProfile } from "../hooks/useProfile";
+import { useSubjects } from "../hooks/useSubjects";
+import { useNotions } from "../hooks/useNotions";
+import { subjectMasteryPct } from "../lib/mastery";
+import { supabase } from "../lib/supabaseClient";
 import "./Sidebar.css";
 
 const NAV = [
   { id: "today", label: "Aujourd'hui", icon: "sun-horizon", to: "/today" },
   { id: "planning", label: "Planning", icon: "calendar-blank", to: null },
   { id: "progress", label: "Progression", icon: "chart-line-up", to: "/progress" },
-  { id: "reviews", label: "Révisions", icon: "cards", to: null, badge: 4 },
+  { id: "reviews", label: "Révisions", icon: "cards", to: null },
 ];
 
 export function Sidebar() {
   const { pathname } = useLocation();
+  const { profile } = useProfile();
+  const { subjects } = useSubjects();
+  const { notions } = useNotions();
 
   return (
     <nav className="sidebar" aria-label="Navigation principale">
@@ -30,7 +37,6 @@ export function Sidebar() {
               <Icon name={item.icon} size={17} />
               <span>{item.label}</span>
               {active && <span className="sidebar__nav-dot" />}
-              {item.badge != null && <span className="sidebar__nav-badge">{item.badge}</span>}
             </>
           );
           return (
@@ -51,20 +57,23 @@ export function Sidebar() {
 
       <div className="sidebar__subjects-label">Vos sujets</div>
       <ul className="sidebar__subjects">
-        {SUBJECTS.map((s) => (
-          <li key={s.id} className="sidebar__subject">
-            <div className="sidebar__subject-row">
-              <span>{s.label}</span>
-              <span className="sidebar__subject-pct">{s.pct} %</span>
-            </div>
-            <div className="sidebar__subject-track">
-              <div
-                className="sidebar__subject-fill"
-                style={{ width: `${s.pct}%`, background: s.tone === "accent" ? "var(--accent)" : "var(--neutral-mark)" }}
-              />
-            </div>
-          </li>
-        ))}
+        {subjects.map((s) => {
+          const pct = subjectMasteryPct(s, notions);
+          return (
+            <li key={s.id} className="sidebar__subject">
+              <div className="sidebar__subject-row">
+                <span>{s.label}</span>
+                <span className="sidebar__subject-pct">{pct} %</span>
+              </div>
+              <div className="sidebar__subject-track">
+                <div
+                  className="sidebar__subject-fill"
+                  style={{ width: `${pct}%`, background: s.tone === "accent" ? "var(--accent)" : "var(--neutral-mark)" }}
+                />
+              </div>
+            </li>
+          );
+        })}
         <li>
           <Link to="/onboarding" className="sidebar__add-subject">
             <Icon name="plus" size={14} />
@@ -75,11 +84,11 @@ export function Sidebar() {
 
       <div className="sidebar__spacer" />
 
-      <div className="sidebar__user">
-        <span className="sidebar__user-avatar">{USER.initials}</span>
-        {USER.name}
-        <Icon name="caret-up-down" size={14} style={{ marginLeft: "auto", color: "var(--ink-45)" }} />
-      </div>
+      <button className="sidebar__user" onClick={() => supabase.auth.signOut()} title="Se déconnecter">
+        <span className="sidebar__user-avatar">{profile?.initials ?? "…"}</span>
+        {profile?.display_name ?? "…"}
+        <Icon name="sign-out" size={14} style={{ marginLeft: "auto", color: "var(--ink-45)" }} />
+      </button>
     </nav>
   );
 }

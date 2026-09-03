@@ -141,6 +141,15 @@
   margin: 0 0;
   border-top: 1px solid var(--ink-1);
   font-size: 13px;
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  text-align: left;
+  color: var(--ink);
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .sidebar__user-avatar {

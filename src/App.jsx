@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { RequireAuth } from "./lib/auth";
+import { AuthScreen } from "./screens/AuthScreen";
 import { TodayScreen } from "./screens/TodayScreen";
 import { SessionScreen } from "./screens/SessionScreen";
 import { ProgressScreen } from "./screens/ProgressScreen";
@@ -9,24 +11,43 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/today" replace />} />
+      <Route path="/login" element={<AuthScreen />} />
       <Route
         path="/today"
         element={
-          <AppShell>
-            <TodayScreen />
-          </AppShell>
+          <RequireAuth>
+            <AppShell>
+              <TodayScreen />
+            </AppShell>
+          </RequireAuth>
         }
       />
       <Route
         path="/progress"
         element={
-          <AppShell>
-            <ProgressScreen />
-          </AppShell>
+          <RequireAuth>
+            <AppShell>
+              <ProgressScreen />
+            </AppShell>
+          </RequireAuth>
         }
       />
-      <Route path="/session" element={<SessionScreen />} />
-      <Route path="/onboarding" element={<OnboardingScreen />} />
+      <Route
+        path="/session"
+        element={
+          <RequireAuth>
+            <SessionScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <RequireAuth>
+            <OnboardingScreen />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<Navigate to="/today" replace />} />
     </Routes>
   );

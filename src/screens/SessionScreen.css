@@ -1,3 +1,15 @@
+.session-empty {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--ink-62);
+  font-size: 14px;
+}
+
 .accent-tick {
   width: 14px;
   height: 2px;

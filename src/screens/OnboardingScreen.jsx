@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { useOnboarding } from "../hooks/useOnboarding";
 import "./OnboardingScreen.css";
@@ -8,7 +8,6 @@ const TOTAL_STEPS = 4;
 
 export function OnboardingScreen() {
   const ob = useOnboarding();
-  const navigate = useNavigate();
 
   return (
     <div className="onboarding">
@@ -31,7 +30,18 @@ export function OnboardingScreen() {
         <p className="onboarding__subtitle">Deux ou trois sujets suffisent pour commencer. Vous pourrez en ajouter à tout moment.</p>
         <div className="onboarding__search">
           <Icon name="magnifying-glass" size={15} style={{ position: "absolute", left: 11, top: 12, color: "var(--ink-45)" }} />
-          <input className="onboarding__search-input" placeholder="Écrire un sujet — ex. « pitcher en anglais »" />
+          <input
+            className="onboarding__search-input"
+            placeholder="Écrire un sujet — ex. « pitcher en anglais »"
+            value={ob.query}
+            onChange={(e) => ob.setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                ob.addCustomTopic();
+              }
+            }}
+          />
         </div>
       </div>
 
@@ -82,9 +92,10 @@ export function OnboardingScreen() {
       <div className="onboarding__spacer" />
 
       <div className="onboarding__footer">
-        <button className="btn-accent" style={{ width: "100%", height: 46 }} disabled={!ob.canSubmit} onClick={() => navigate("/today")}>
-          Construire mon planning
-          <Icon name="arrow-right" size={15} />
+        {ob.error && <div className="onboarding__error">{ob.error}</div>}
+        <button className="btn-accent" style={{ width: "100%", height: 46 }} disabled={!ob.canSubmit} onClick={ob.submit}>
+          {ob.submitting ? "Un instant…" : "Construire mon planning"}
+          {!ob.submitting && <Icon name="arrow-right" size={15} />}
         </button>
         <div className="onboarding__summary">{ob.selectionSummary}</div>
       </div>
