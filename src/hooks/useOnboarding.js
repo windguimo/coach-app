@@ -3,7 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { ONBOARDING_PACES, ONBOARDING_TOPICS } from "../data/content";
 
-const DAYS = ["L", "M", "M", "J", "V", "S", "D"];
+// French label, Postgres dow (0=Sun..6=Sat) — Mon..Sun display order.
+const DAYS = [
+  { label: "L", dow: 1 },
+  { label: "M", dow: 2 },
+  { label: "M", dow: 3 },
+  { label: "J", dow: 4 },
+  { label: "V", dow: 5 },
+  { label: "S", dow: 6 },
+  { label: "D", dow: 0 },
+];
 const DEFAULT_MINUTES = 15;
 
 export function useOnboarding() {
@@ -11,9 +20,20 @@ export function useOnboarding() {
   const [customTopics, setCustomTopics] = useState([]);
   const [selected, setSelected] = useState([]);
   const [pace, setPace] = useState(`${DEFAULT_MINUTES} min`);
+  const [activeDays, setActiveDays] = useState(DAYS.map((d) => d.dow));
   const [query, setQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  const toggleDay = (dow) => {
+    setActiveDays((days) => {
+      if (days.includes(dow)) {
+        if (days.length === 1) return days; // keep at least one active day
+        return days.filter((d) => d !== dow);
+      }
+      return days.concat(dow);
+    });
+  };
 
   const allTopics = useMemo(() => [...ONBOARDING_TOPICS, ...customTopics], [customTopics]);
 
@@ -56,14 +76,20 @@ export function useOnboarding() {
   const minutes = parseInt(pace, 10);
   const n = selected.length;
 
+  const daysCount = activeDays.length;
   const planLine =
     n === 0
       ? "Choisissez un sujet et je propose un premier planning."
-      : `${n} ${n > 1 ? "sujets" : "sujet"} en alternance, ${minutes} min par jour — un cours, un quiz. Premier point d'étape dans ${
+      : `${n} ${n > 1 ? "sujets" : "sujet"} en alternance, ${minutes} min, ${daysCount} jour${daysCount > 1 ? "s" : ""} par semaine — un cours, un quiz. Premier point d'étape dans ${
           n <= 2 ? "10" : "14"
         } jours.`;
 
-  const planWeek = DAYS.map((label, i) => ({ label, weekend: i > 4, on: n > 0 }));
+  const planWeek = DAYS.map(({ label, dow }) => ({
+    label,
+    weekend: dow === 0 || dow === 6,
+    on: n > 0 && activeDays.includes(dow),
+    toggle: () => toggleDay(dow),
+  }));
 
   const selectionSummary =
     n === 0 ? "Aucun sujet sélectionné" : `${n} ${n > 1 ? "sujets sélectionnés" : "sujet sélectionné"} · ${minutes} min/jour`;
@@ -75,6 +101,7 @@ export function useOnboarding() {
     const { error: err } = await supabase.rpc("apply_onboarding", {
       p_subjects: selected,
       p_daily_minutes: minutes,
+      p_active_days: activeDays,
     });
     setSubmitting(false);
     if (err) {

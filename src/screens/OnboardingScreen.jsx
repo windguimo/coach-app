@@ -79,8 +79,9 @@ export function OnboardingScreen() {
         <div className="plan-preview__line">{ob.planLine}</div>
         <div className="plan-preview__week">
           {ob.planWeek.map((d, i) => (
-            <div
+            <button
               key={i}
+              onClick={d.toggle}
               className="plan-preview__day"
               style={{
                 background: !d.on ? "var(--ink-06)" : d.weekend ? "rgba(198,240,74,.45)" : "var(--accent)",
@@ -88,10 +89,10 @@ export function OnboardingScreen() {
               }}
             >
               {d.label}
-            </div>
+            </button>
           ))}
         </div>
-        <div className="plan-preview__note">Séances écourtées le week-end. Modifiable plus tard.</div>
+        <div className="plan-preview__note">Cliquez un jour pour l'inclure ou non. Séances écourtées le week-end.</div>
       </div>
 
       <div className="onboarding__spacer" />

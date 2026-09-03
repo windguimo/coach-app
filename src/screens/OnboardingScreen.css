@@ -171,6 +171,9 @@
   border-radius: 6px;
   text-align: center;
   font: 400 11px/1.2 var(--font-body);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .plan-preview__note {

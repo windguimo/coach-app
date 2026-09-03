@@ -115,7 +115,7 @@ function TodayDesktop({ profile, subjects, notions, days, today, cells, mileston
               {d.status === "done" && <Icon name="check" size={15} style={{ marginTop: 24, display: "block" }} />}
               {d.status === "missed" && <Icon name="x" size={15} style={{ marginTop: 24, display: "block", color: "var(--ink-4)" }} />}
               {d.status === "today" && <div className="week-cell__now">En cours</div>}
-              <div className="week-cell__label">{d.subjects?.label ?? d.label ?? "—"}</div>
+              <div className="week-cell__label">{d.subjects?.label ?? d.label ?? (d.status === "off" ? "Repos" : "—")}</div>
               {d.minutes != null && <div className="week-cell__minutes">{d.minutes} min</div>}
             </div>
           ))}

@@ -36,7 +36,7 @@ export function PlanningScreen() {
                 {d.status === "done" && <Icon name="check" size={14} className="planning-day__mark" />}
                 {d.status === "missed" && <Icon name="x" size={14} className="planning-day__mark planning-day__mark--muted" />}
                 {d.status === "today" && <div className="planning-day__now">Aujourd'hui</div>}
-                <div className="planning-day__subject">{d.subjects?.label ?? d.label ?? "—"}</div>
+                <div className="planning-day__subject">{d.subjects?.label ?? d.label ?? (d.status === "off" ? "Repos" : "—")}</div>
                 {d.minutes != null && <div className="planning-day__minutes">{d.minutes} min</div>}
               </div>
             ))}
