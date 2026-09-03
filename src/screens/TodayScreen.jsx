@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { Heatmap, LevelRing, MasteryList, MilestoneChips } from "../components/ProgressWidgets";
+import { ReminderBanner } from "../components/ReminderBanner";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useProfile, levelFromXp } from "../hooks/useProfile";
 import { useSubjects } from "../hooks/useSubjects";
@@ -96,6 +97,8 @@ function TodayDesktop({ profile, subjects, notions, days, today, cells, mileston
             <SessionCTA today={today} />
           </div>
         </div>
+
+        <ReminderBanner />
 
         <div className="today-desktop__week-header">
           <div className="section-label">Vos 7 prochains jours</div>
@@ -200,6 +203,8 @@ function TodayMobile({ profile, subjects, notions, today }) {
           <SessionCTA today={today} />
         </div>
       </div>
+
+      <ReminderBanner />
 
       <div className="stat-cards">
         <div className="stat-card">
