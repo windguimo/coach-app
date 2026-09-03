@@ -3,8 +3,20 @@
 // the client: it only exists in this function's environment (set via
 // Supabase → Edge Functions → Secrets).
 //
+// Content is cached in a *shared* library (`content_library` /
+// `content_library_questions`), keyed by a normalized topic slug + module
+// index — not per user. So the first user anywhere to reach "module 3 of
+// Négociation commerciale" pays for the Claude call; every other user on
+// that same topic (however they spelled or capitalized it) gets the cached
+// content for free. Only lightweight per-user pointer rows (`course_modules`:
+// which module a user is on, their notion link) and mastery/attempt data
+// stay per user — see supabase/migrations/0002_shared_content_library.sql
+// for the normalization/staleness rationale.
+//
 // POST body: { subject_id: string }
-// Auth: forwards the caller's JWT so RLS scopes everything to that user.
+// Auth: forwards the caller's JWT so RLS scopes per-user reads/writes to
+// that user; a separate service-role client writes to the shared library
+// (RLS only grants authenticated users SELECT on it, by design).
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -16,6 +28,7 @@ const CORS_HEADERS = {
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const LESSON_TOOL = {
   name: "emit_lesson",
@@ -99,6 +112,77 @@ async function generateLesson(subjectLabel: string, moduleIndex: number) {
   return toolUse.input;
 }
 
+const LIBRARY_CONTENT_FIELDS = "id, eyebrow, title, paragraphs, takeaway, read_minutes, notion_label";
+const LIBRARY_QUESTION_FIELDS = "id, prompt, options, correct_index, explanation";
+
+// The response only exposes what the client renders — internal fields like
+// notion_label (used server-side to link the per-user notion) and
+// reuse_count (cache bookkeeping) stay out of it.
+function displayContentFields(content: any) {
+  const { eyebrow, title, paragraphs, takeaway, read_minutes } = content;
+  return { eyebrow, title, paragraphs, takeaway, read_minutes };
+}
+
+// Shared-cache lookup: any authenticated client can SELECT content_library
+// (RLS grants that), so the user-scoped client is enough here — no need for
+// the service-role client on the read path.
+async function findLibraryContent(client: any, topicSlug: string, moduleIndex: number) {
+  const { data, error } = await client
+    .from("content_library")
+    .select(`${LIBRARY_CONTENT_FIELDS}, reuse_count, content_library_questions(${LIBRARY_QUESTION_FIELDS})`)
+    .eq("topic_slug", topicSlug)
+    .eq("module_index", moduleIndex)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Shared-cache write: content_library has no insert policy for regular
+// users, so this must go through the service-role client, which bypasses RLS.
+async function writeLibraryContent(admin: any, topicSlug: string, topicLabel: string, moduleIndex: number, lesson: any) {
+  const { data: created, error } = await admin
+    .from("content_library")
+    .insert({
+      topic_slug: topicSlug,
+      topic_label: topicLabel,
+      module_index: moduleIndex,
+      notion_label: lesson.notion_label,
+      eyebrow: lesson.eyebrow,
+      title: lesson.title,
+      paragraphs: lesson.paragraphs,
+      takeaway: lesson.takeaway,
+    })
+    .select(LIBRARY_CONTENT_FIELDS)
+    .single();
+
+  if (error) {
+    // Unique violation on (topic_slug, module_index): another request
+    // generated this exact module concurrently — reuse it instead of
+    // erroring or paying for a second, wasted Claude call.
+    if (error.code === "23505") {
+      const existing = await findLibraryContent(admin, topicSlug, moduleIndex);
+      if (existing) return existing;
+    }
+    throw error;
+  }
+
+  const quizRows = lesson.quiz.map((q: any, i: number) => ({
+    content_id: created.id,
+    question_index: i + 1,
+    prompt: q.prompt,
+    options: q.options,
+    correct_index: Math.min(Math.max(0, q.correct_index), q.options.length - 1),
+    explanation: q.explanation,
+  }));
+  const { data: questions, error: quizErr } = await admin
+    .from("content_library_questions")
+    .insert(quizRows)
+    .select(LIBRARY_QUESTION_FIELDS);
+  if (quizErr) throw quizErr;
+
+  return { ...created, content_library_questions: questions };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
 
@@ -111,6 +195,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const {
       data: { user },
@@ -127,37 +212,57 @@ Deno.serve(async (req) => {
       .single();
     if (subjectErr || !subject) throw new Error("subject not found (or not yours)");
 
+    // Each user still progresses through modules 1, 2, 3... independently
+    // for their own subject — this stays a per-user count.
     const { count } = await supabase
       .from("course_modules")
       .select("id", { count: "exact", head: true })
       .eq("subject_id", subject_id);
     const moduleIndex = (count ?? 0) + 1;
 
-    // Cache hit: module already generated (e.g. duplicate click) — return it as-is.
+    // Per-user cache hit: this user already has this module (e.g. duplicate
+    // click) — return it as-is, no writes.
     const { data: existing } = await supabase
       .from("course_modules")
-      .select("*, quiz_questions(*)")
+      .select(
+        `id, module_index, notion_id, content_library (${LIBRARY_CONTENT_FIELDS}, content_library_questions(${LIBRARY_QUESTION_FIELDS}))`,
+      )
       .eq("subject_id", subject_id)
       .eq("module_index", moduleIndex)
       .maybeSingle();
     if (existing) {
-      return new Response(JSON.stringify({ course_module: existing, quiz_questions: existing.quiz_questions }), {
-        headers: { ...CORS_HEADERS, "content-type": "application/json" },
-      });
+      const { content_library: content, ...moduleFields } = existing as any;
+      return new Response(
+        JSON.stringify({
+          course_module: { ...moduleFields, ...displayContentFields(content) },
+          quiz_questions: content.content_library_questions,
+        }),
+        { headers: { ...CORS_HEADERS, "content-type": "application/json" } },
+      );
     }
 
-    const lesson = await generateLesson(subject.label, moduleIndex);
+    const { data: topicSlug, error: slugErr } = await supabase.rpc("slugify_topic", { p_label: subject.label });
+    if (slugErr) throw slugErr;
+
+    let content = await findLibraryContent(supabase, topicSlug, moduleIndex);
+    if (content) {
+      // Shared cache hit — reuse existing content, no Claude call.
+      await admin.from("content_library").update({ reuse_count: content.reuse_count + 1 }).eq("id", content.id);
+    } else {
+      const lesson = await generateLesson(subject.label, moduleIndex);
+      content = await writeLibraryContent(admin, topicSlug, subject.label, moduleIndex, lesson);
+    }
 
     let { data: notion } = await supabase
       .from("notions")
       .select("id")
       .eq("subject_id", subject_id)
-      .eq("label", lesson.notion_label)
+      .eq("label", content.notion_label)
       .maybeSingle();
     if (!notion) {
       const { data: created, error: notionErr } = await supabase
         .from("notions")
-        .insert({ user_id: user.id, subject_id, label: lesson.notion_label })
+        .insert({ user_id: user.id, subject_id, label: content.notion_label })
         .select("id")
         .single();
       if (notionErr) throw notionErr;
@@ -171,31 +276,19 @@ Deno.serve(async (req) => {
         subject_id,
         notion_id: notion.id,
         module_index: moduleIndex,
-        eyebrow: lesson.eyebrow,
-        title: lesson.title,
-        paragraphs: lesson.paragraphs,
-        takeaway: lesson.takeaway,
+        content_id: content.id,
       })
-      .select()
+      .select("id, module_index, notion_id")
       .single();
     if (moduleErr) throw moduleErr;
 
-    const quizRows = lesson.quiz.map((q: any, i: number) => ({
-      user_id: user.id,
-      course_module_id: courseModule.id,
-      subject_id,
-      question_index: i + 1,
-      prompt: q.prompt,
-      options: q.options,
-      correct_index: Math.min(Math.max(0, q.correct_index), q.options.length - 1),
-      explanation: q.explanation,
-    }));
-    const { data: quizQuestions, error: quizErr } = await supabase.from("quiz_questions").insert(quizRows).select();
-    if (quizErr) throw quizErr;
-
-    return new Response(JSON.stringify({ course_module: courseModule, quiz_questions: quizQuestions }), {
-      headers: { ...CORS_HEADERS, "content-type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        course_module: { ...courseModule, ...displayContentFields(content) },
+        quiz_questions: content.content_library_questions,
+      }),
+      { headers: { ...CORS_HEADERS, "content-type": "application/json" } },
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message ?? String(err) }), {
       status: 400,
