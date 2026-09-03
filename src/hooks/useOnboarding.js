@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { ONBOARDING_PACES, ONBOARDING_TOPICS } from "../data/content";
+import { useSubjects } from "./useSubjects";
+import { useProfile } from "./useProfile";
 
 // French label, Postgres dow (0=Sun..6=Sat) — Mon..Sun display order.
 const DAYS = [
@@ -24,6 +26,24 @@ export function useOnboarding() {
   const [query, setQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Re-entering onboarding (e.g. via "Ajouter un sujet") must start from what
+  // the user already has, not from empty — apply_onboarding replaces the
+  // whole subject set, so an unseeded screen would silently wipe it.
+  const { subjects: existingSubjects, loading: subjectsLoading } = useSubjects();
+  const { profile, loading: profileLoading } = useProfile();
+  const seeded = useRef(false);
+
+  useEffect(() => {
+    if (seeded.current || subjectsLoading || profileLoading || !profile) return;
+    seeded.current = true;
+    if (existingSubjects.length > 0) {
+      setSelected(existingSubjects.map((s) => s.label));
+      setCustomTopics(existingSubjects.map((s) => s.label).filter((l) => !ONBOARDING_TOPICS.includes(l)));
+    }
+    if (profile.daily_minutes) setPace(`${profile.daily_minutes} min`);
+    if (profile.active_days?.length) setActiveDays(profile.active_days);
+  }, [existingSubjects, subjectsLoading, profile, profileLoading]);
 
   const toggleDay = (dow) => {
     setActiveDays((days) => {
