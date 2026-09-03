@@ -44,7 +44,7 @@ const LESSON_TOOL = {
               items: { type: "string" },
               description: "Exactly four answer options (array length must be 4).",
             },
-            correct_index: { type: "integer", minimum: 0, maximum: 3 },
+            correct_index: { type: "integer", description: "Index of the correct option in `options`, between 0 and 3 inclusive." },
             explanation: { type: "string", description: "1-2 sentences explaining why the correct option is right." },
           },
           required: ["prompt", "options", "correct_index", "explanation"],
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
       question_index: i + 1,
       prompt: q.prompt,
       options: q.options,
-      correct_index: q.correct_index,
+      correct_index: Math.min(Math.max(0, q.correct_index), q.options.length - 1),
       explanation: q.explanation,
     }));
     const { data: quizQuestions, error: quizErr } = await supabase.from("quiz_questions").insert(quizRows).select();
