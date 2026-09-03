@@ -67,9 +67,10 @@ async function generateLesson(subjectLabel: string, moduleIndex: number) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-opus-5",
+      model: "claude-sonnet-5",
       max_tokens: 4000,
-      output_config: { effort: "medium" },
+      thinking: { type: "disabled" },
+      output_config: { effort: "low" },
       tools: [LESSON_TOOL],
       tool_choice: { type: "tool", name: "emit_lesson" },
       system:

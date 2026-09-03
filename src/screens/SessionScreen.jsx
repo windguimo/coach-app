@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { SessionLoading } from "../components/SessionLoading";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useGeneratedSession } from "../hooks/useGeneratedSession";
+import { useSubjects } from "../hooks/useSubjects";
 import "./SessionScreen.css";
 
 function optionKind(i, correctIndex, picked, answered) {
@@ -66,6 +68,8 @@ export function SessionScreen() {
   const subjectId = params.get("subject");
   const { data, loading, error, recordAttempt, regenerate } = useGeneratedSession(subjectId);
   const quiz = useQuizFlow(data?.quiz_questions, recordAttempt);
+  const { subjects } = useSubjects();
+  const subjectLabel = subjects.find((s) => s.id === subjectId)?.label;
 
   if (!subjectId) {
     return (
@@ -79,11 +83,7 @@ export function SessionScreen() {
   }
 
   if (loading) {
-    return (
-      <div className="session-empty">
-        <p>Claude prépare votre séance…</p>
-      </div>
-    );
+    return <SessionLoading subjectLabel={subjectLabel} />;
   }
 
   if (error || !data) {
