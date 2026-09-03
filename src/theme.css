@@ -1,0 +1,108 @@
+/* Coach — "blanc & signal" design tokens (Nocturne design system, light variant) */
+:root {
+  --bg: #ffffff;
+  --surface: #f4f4f3;
+  --ink: #17181a;
+  --ink-85: rgba(23, 24, 26, 0.85);
+  --ink-78: rgba(23, 24, 26, 0.78);
+  --ink-72: rgba(23, 24, 26, 0.72);
+  --ink-66: rgba(23, 24, 26, 0.66);
+  --ink-62: rgba(23, 24, 26, 0.62);
+  --ink-5: rgba(23, 24, 26, 0.5);
+  --ink-45: rgba(23, 24, 26, 0.45);
+  --ink-4: rgba(23, 24, 26, 0.4);
+  --ink-16: rgba(23, 24, 26, 0.16);
+  --ink-12: rgba(23, 24, 26, 0.12);
+  --ink-1: rgba(23, 24, 26, 0.1);
+  --ink-08: rgba(23, 24, 26, 0.08);
+  --ink-07: rgba(23, 24, 26, 0.07);
+  --ink-06: rgba(23, 24, 26, 0.06);
+
+  --accent: #c6f04a; /* citron — reserved for "now" and "success" */
+  --accent-ink: #17181a; /* text/icon color on top of accent */
+  --neutral-mark: #8a8f98; /* secondary progress mark (not "now") */
+
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, Menlo, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --shadow-line: 0 0 0 1px var(--ink-1);
+  --shadow-line-inset: inset 0 0 0 1px var(--ink-1);
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ph {
+  line-height: 1;
+}
+
+.btn-accent {
+  height: 44px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 500 15px/1 var(--font-body);
+}
+
+.btn-accent:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-62);
+}
+
+.section-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,0 +1,154 @@
+.sidebar {
+  width: 236px;
+  flex: none;
+  border-right: 1px solid var(--ink-1);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0;
+  height: 100%;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 20px 22px;
+}
+
+.sidebar__brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--accent);
+  display: grid;
+  place-items: center;
+  color: var(--accent-ink);
+}
+
+.sidebar__brand-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.sidebar__nav {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--ink-66);
+  text-decoration: none;
+}
+
+.sidebar__nav-item--active {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.sidebar__nav-item--disabled {
+  cursor: default;
+}
+
+.sidebar__nav-dot {
+  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.sidebar__nav-badge {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.sidebar__subjects-label {
+  margin: 26px 20px 10px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+
+.sidebar__subjects {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar__subject {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.sidebar__subject-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.sidebar__subject-pct {
+  color: var(--ink-45);
+}
+
+.sidebar__subject-track {
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--ink-1);
+}
+
+.sidebar__subject-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.sidebar__add-subject {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  font-size: 13px;
+  color: var(--ink-5);
+  cursor: pointer;
+}
+
+.sidebar__spacer {
+  flex: 1;
+}
+
+.sidebar__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px 0;
+  margin: 0 0;
+  border-top: 1px solid var(--ink-1);
+  font-size: 13px;
+}
+
+.sidebar__user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}

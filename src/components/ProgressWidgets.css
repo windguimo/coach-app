@@ -1,0 +1,90 @@
+.level-ring {
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.level-ring__inner {
+  border-radius: 50%;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.level-ring__num {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.level-ring__label {
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.heatmap__cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+}
+
+.mastery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 12px;
+}
+
+.mastery-row__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.mastery-row__level {
+  font-size: 11px;
+  color: var(--ink-45);
+}
+
+.mastery-row__bar {
+  display: flex;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.mastery-row__seg {
+  flex: 1;
+  height: 6px;
+  border-radius: 2px;
+}
+
+.milestones-row {
+  display: flex;
+  gap: 8px;
+}
+
+.milestone-chip {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 11px;
+  box-shadow: var(--shadow-line-inset);
+  color: var(--ink-45);
+}
+
+.milestone-chip--reached {
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: none;
+}

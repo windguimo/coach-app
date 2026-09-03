@@ -1,0 +1,32 @@
+.tabbar {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 10px 8px calc(14px + env(safe-area-inset-bottom, 16px));
+  background: var(--bg);
+  box-shadow: 0 -1px 0 var(--ink-12);
+}
+
+.tabbar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-45);
+  text-decoration: none;
+}
+
+.tabbar__item--active {
+  color: var(--ink);
+}
+
+.tabbar__label {
+  font-size: 10px;
+}
+
+.tabbar__mark {
+  width: 16px;
+  height: 2px;
+  background: var(--accent);
+}
