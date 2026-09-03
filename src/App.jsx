@@ -3,6 +3,7 @@ import { AppShell } from "./components/AppShell";
 import { RequireAuth } from "./lib/auth";
 import { AuthScreen } from "./screens/AuthScreen";
 import { TodayScreen } from "./screens/TodayScreen";
+import { PlanningScreen } from "./screens/PlanningScreen";
 import { SessionScreen } from "./screens/SessionScreen";
 import { ProgressScreen } from "./screens/ProgressScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
@@ -18,6 +19,16 @@ function App() {
           <RequireAuth>
             <AppShell>
               <TodayScreen />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/planning"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <PlanningScreen />
             </AppShell>
           </RequireAuth>
         }

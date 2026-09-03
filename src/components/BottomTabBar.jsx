@@ -5,7 +5,7 @@ import "./BottomTabBar.css";
 
 const TABS = [
   { id: "today", label: "Aujourd'hui", icon: "sun-horizon", to: "/today" },
-  { id: "planning", label: "Planning", icon: "calendar-blank", to: null },
+  { id: "planning", label: "Planning", icon: "calendar-blank", to: "/planning" },
   { id: "progress", label: "Progression", icon: "chart-line-up", to: "/progress" },
   { id: "profile", label: "Profil", icon: "user", to: null, action: () => supabase.auth.signOut(), title: "Se déconnecter" },
 ];

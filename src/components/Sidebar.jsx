@@ -9,7 +9,7 @@ import "./Sidebar.css";
 
 const NAV = [
   { id: "today", label: "Aujourd'hui", icon: "sun-horizon", to: "/today" },
-  { id: "planning", label: "Planning", icon: "calendar-blank", to: null },
+  { id: "planning", label: "Planning", icon: "calendar-blank", to: "/planning" },
   { id: "progress", label: "Progression", icon: "chart-line-up", to: "/progress" },
   { id: "reviews", label: "Révisions", icon: "cards", to: null },
 ];
