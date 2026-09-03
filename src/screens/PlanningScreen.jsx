@@ -1,5 +1,7 @@
 import { usePlanning } from "../hooks/usePlanning";
 import { Icon } from "../components/Icon";
+import { SubjectBadge } from "../components/SubjectBadge";
+import "../components/SubjectBadge.css";
 import "./PlanningScreen.css";
 
 function chunk(arr, size) {
@@ -28,18 +30,24 @@ export function PlanningScreen() {
       <div className="planning-weeks">
         {weeks.map((week, wi) => (
           <div className="planning-week" key={wi}>
-            {week.map((d) => (
-              <div key={d.id} className={`planning-day planning-day--${d.status}`}>
-                <div className="planning-day__date">
-                  {d.dayLabel} {d.dateNum} {d.monthLabel}
+            {week.map((d) => {
+              const subjectLabel = d.subjects?.label ?? d.label;
+              return (
+                <div key={d.id} className={`planning-day planning-day--${d.status}`}>
+                  <div className="planning-day__date">
+                    {d.dayLabel} {d.dateNum} {d.monthLabel}
+                  </div>
+                  {d.status === "done" && <Icon name="check" size={14} className="planning-day__mark" />}
+                  {d.status === "missed" && <Icon name="x" size={14} className="planning-day__mark planning-day__mark--muted" />}
+                  {d.status === "today" && <div className="planning-day__now">Aujourd'hui</div>}
+                  <div className="planning-day__subject">
+                    {subjectLabel && <SubjectBadge label={subjectLabel} size={15} />}
+                    <span>{subjectLabel ?? (d.status === "off" ? "Repos" : "—")}</span>
+                  </div>
+                  {d.minutes != null && <div className="planning-day__minutes">{d.minutes} min</div>}
                 </div>
-                {d.status === "done" && <Icon name="check" size={14} className="planning-day__mark" />}
-                {d.status === "missed" && <Icon name="x" size={14} className="planning-day__mark planning-day__mark--muted" />}
-                {d.status === "today" && <div className="planning-day__now">Aujourd'hui</div>}
-                <div className="planning-day__subject">{d.subjects?.label ?? d.label ?? (d.status === "off" ? "Repos" : "—")}</div>
-                {d.minutes != null && <div className="planning-day__minutes">{d.minutes} min</div>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

@@ -185,6 +185,9 @@
 .week-cell__label {
   margin-top: 6px;
   font-size: 11.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .week-cell__minutes {
