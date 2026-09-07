@@ -11,7 +11,7 @@ const NAV = [
   { id: "today", label: "Aujourd'hui", icon: "sun-horizon", to: "/today" },
   { id: "planning", label: "Planning", icon: "calendar-blank", to: "/planning" },
   { id: "progress", label: "Progression", icon: "chart-line-up", to: "/progress" },
-  { id: "reviews", label: "Révisions", icon: "cards", to: null },
+  { id: "reviews", label: "Révisions", icon: "cards", to: "/revisions" },
 ];
 
 export function Sidebar() {
@@ -19,6 +19,7 @@ export function Sidebar() {
   const { profile } = useProfile();
   const { subjects } = useSubjects();
   const { notions } = useNotions();
+  const dueForReview = notions.filter((n) => n.filled < 5).length;
 
   return (
     <nav className="sidebar" aria-label="Navigation principale">
@@ -37,6 +38,7 @@ export function Sidebar() {
               <Icon name={item.icon} size={17} />
               <span>{item.label}</span>
               {active && <span className="sidebar__nav-dot" />}
+              {item.id === "reviews" && dueForReview > 0 && <span className="sidebar__nav-badge">{dueForReview}</span>}
             </>
           );
           return (

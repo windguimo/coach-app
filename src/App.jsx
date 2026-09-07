@@ -6,6 +6,7 @@ import { TodayScreen } from "./screens/TodayScreen";
 import { PlanningScreen } from "./screens/PlanningScreen";
 import { SessionScreen } from "./screens/SessionScreen";
 import { ProgressScreen } from "./screens/ProgressScreen";
+import { RevisionsScreen } from "./screens/RevisionsScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 
 function App() {
@@ -39,6 +40,16 @@ function App() {
           <RequireAuth>
             <AppShell>
               <ProgressScreen />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/revisions"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <RevisionsScreen />
             </AppShell>
           </RequireAuth>
         }

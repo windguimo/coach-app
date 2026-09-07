@@ -184,6 +184,7 @@ Deno.serve(async (req) => {
       user_id: user.id,
       course_module_id: courseModule.id,
       subject_id,
+      notion_id: notion.id,
       question_index: i + 1,
       prompt: q.prompt,
       options: q.options,
