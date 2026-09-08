@@ -76,9 +76,23 @@ export function buildPlanningIcs(days) {
   return doc;
 }
 
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
 export function downloadPlanningIcs(days) {
   const ics = buildPlanningIcs(days);
   if (!ics) return false;
+
+  if (isIOS()) {
+    // iOS Safari ignores the `download` attribute for calendar files and
+    // shows a Save-to-Files sheet instead of the native "Add to Calendar"
+    // preview. Navigating directly to a text/calendar data URI triggers
+    // that native preview instead.
+    window.location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+    return true;
+  }
+
   const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
