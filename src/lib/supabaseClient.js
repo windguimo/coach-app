@@ -14,5 +14,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 });
 
 export function authRedirectTo(path) {
-  return `${window.location.origin}${import.meta.env.BASE_URL}#${path}`;
+  // window.location.pathname (not Vite's BASE_URL, which is a relative
+  // "./" under our build config and doesn't compose into an absolute URL)
+  // — this reads the real deployed path, e.g. "/coach-app/".
+  return `${window.location.origin}${window.location.pathname}#${path}`;
 }
