@@ -87,9 +87,11 @@ export function downloadPlanningIcs(days) {
   if (isIOS()) {
     // iOS Safari ignores the `download` attribute for calendar files and
     // shows a Save-to-Files sheet instead of the native "Add to Calendar"
-    // preview. Navigating directly to a text/calendar data URI triggers
-    // that native preview instead.
-    window.location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+    // preview. A same-origin Blob URL (not a data: URI — modern Safari
+    // blocks top-level navigation to those) triggers that preview instead.
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.location.href = url;
     return true;
   }
 
