@@ -31,11 +31,28 @@
 }
 
 .planning-day {
+  display: block;
   min-height: 84px;
   padding: 10px 10px 12px;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-line-inset);
   font-size: 11.5px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.planning-day--clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.planning-day--clickable:hover {
+  box-shadow: inset 0 0 0 1px var(--ink-4);
+}
+
+.planning-day--today.planning-day--clickable:hover {
+  box-shadow: none;
+  background: #b9e33f;
 }
 
 .planning-day__date {
@@ -87,4 +104,15 @@
 .planning-day--missed .planning-day__subject {
   text-decoration: line-through;
   color: var(--ink-4);
+}
+
+.planning-day__cta {
+  margin-top: 6px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink-66);
+}
+
+.planning-day--missed:hover .planning-day__cta {
+  color: var(--ink);
 }

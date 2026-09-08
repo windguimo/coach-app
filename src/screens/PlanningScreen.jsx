@@ -1,8 +1,11 @@
+import { Link } from "react-router-dom";
 import { usePlanning } from "../hooks/usePlanning";
 import { Icon } from "../components/Icon";
 import { SubjectBadge } from "../components/SubjectBadge";
 import "../components/SubjectBadge.css";
 import "./PlanningScreen.css";
+
+const CLICKABLE_STATUSES = ["missed", "today", "upcoming"];
 
 function chunk(arr, size) {
   const out = [];
@@ -32,8 +35,15 @@ export function PlanningScreen() {
           <div className="planning-week" key={wi}>
             {week.map((d) => {
               const subjectLabel = d.subjects?.label ?? d.label;
+              const clickable = d.subject_id && CLICKABLE_STATUSES.includes(d.status);
+              const Tag = clickable ? Link : "div";
+              const tagProps = clickable ? { to: `/session?subject=${d.subject_id}` } : {};
               return (
-                <div key={d.id} className={`planning-day planning-day--${d.status}`}>
+                <Tag
+                  key={d.id}
+                  className={`planning-day planning-day--${d.status}${clickable ? " planning-day--clickable" : ""}`}
+                  {...tagProps}
+                >
                   <div className="planning-day__date">
                     {d.dayLabel} {d.dateNum} {d.monthLabel}
                   </div>
@@ -45,7 +55,8 @@ export function PlanningScreen() {
                     <span>{subjectLabel ?? (d.status === "off" ? "Repos" : "—")}</span>
                   </div>
                   {d.minutes != null && <div className="planning-day__minutes">{d.minutes} min</div>}
-                </div>
+                  {d.status === "missed" && <div className="planning-day__cta">Rattraper →</div>}
+                </Tag>
               );
             })}
           </div>
