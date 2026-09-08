@@ -3,6 +3,7 @@ import { usePlanning } from "../hooks/usePlanning";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { Icon } from "../components/Icon";
 import { SubjectBadge } from "../components/SubjectBadge";
+import { downloadPlanningIcs } from "../lib/ics";
 import "../components/SubjectBadge.css";
 import "./PlanningScreen.css";
 
@@ -23,18 +24,30 @@ export function PlanningScreen() {
   const done = days.filter((d) => d.status === "done").length;
   const missed = days.filter((d) => d.status === "missed").length;
 
+  const canExport = days.some((d) => (d.status === "today" || d.status === "upcoming") && d.subject_id);
+
   return (
     <div className="planning-screen">
-      <h2 className="planning-screen__title">Planning</h2>
-      <p className="planning-screen__subtitle">
-        {done} séance{done > 1 ? "s" : ""} faite{done > 1 ? "s" : ""}
-        {missed > 0 && (
-          <>
-            {" "}
-            · {missed} manquée{missed > 1 ? "s" : ""}
-          </>
+      <div className="planning-screen__head">
+        <div>
+          <h2 className="planning-screen__title">Planning</h2>
+          <p className="planning-screen__subtitle">
+            {done} séance{done > 1 ? "s" : ""} faite{done > 1 ? "s" : ""}
+            {missed > 0 && (
+              <>
+                {" "}
+                · {missed} manquée{missed > 1 ? "s" : ""}
+              </>
+            )}
+          </p>
+        </div>
+        {canExport && (
+          <button className="planning-export" onClick={() => downloadPlanningIcs(days)}>
+            <Icon name="calendar-plus" size={14} />
+            Ajouter à mon agenda
+          </button>
         )}
-      </p>
+      </div>
 
       {isDesktop ? <PlanningGrid days={days} /> : <PlanningList days={days} />}
     </div>

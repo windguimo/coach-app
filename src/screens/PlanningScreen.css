@@ -5,10 +5,36 @@
   padding: 28px 24px 48px;
 }
 
+.planning-screen__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .planning-screen__title {
   margin: 0;
   font-size: 26px;
   font-weight: 500;
+}
+
+.planning-export {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--ink-16);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 12.5px/1 var(--font-body);
+}
+
+.planning-export:hover {
+  background: var(--surface);
 }
 
 .planning-screen__subtitle {
