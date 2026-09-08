@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { usePlanning } from "../hooks/usePlanning";
 import { useIsDesktop } from "../hooks/useIsDesktop";
@@ -9,6 +10,9 @@ import "./PlanningScreen.css";
 
 const CLICKABLE_STATUSES = ["missed", "today", "upcoming"];
 
+const EXPORT_HINT =
+  "Fichier téléchargé. Ouvrez-le depuis l'app Fichiers (ou vos téléchargements) pour l'ajouter à votre calendrier — ou utilisez Safari pour un ajout direct.";
+
 function chunk(arr, size) {
   const out = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -18,6 +22,10 @@ function chunk(arr, size) {
 export function PlanningScreen() {
   const isDesktop = useIsDesktop();
   const { days, loading } = usePlanning();
+  const [exportHint, setExportHint] = useState(false);
+  const hintTimeout = useRef(null);
+
+  useEffect(() => () => clearTimeout(hintTimeout.current), []);
 
   if (loading) return <div className="today-loading">Chargement…</div>;
 
@@ -25,6 +33,17 @@ export function PlanningScreen() {
   const missed = days.filter((d) => d.status === "missed").length;
 
   const canExport = days.some((d) => (d.status === "today" || d.status === "upcoming") && d.subject_id);
+
+  function handleExport() {
+    const result = downloadPlanningIcs(days);
+    clearTimeout(hintTimeout.current);
+    if (result.mode === "download-hint") {
+      setExportHint(true);
+      hintTimeout.current = setTimeout(() => setExportHint(false), 8000);
+    } else {
+      setExportHint(false);
+    }
+  }
 
   return (
     <div className="planning-screen">
@@ -42,12 +61,14 @@ export function PlanningScreen() {
           </p>
         </div>
         {canExport && (
-          <button className="planning-export" onClick={() => downloadPlanningIcs(days)}>
+          <button className="planning-export" onClick={handleExport}>
             <Icon name="calendar-plus" size={14} />
             Ajouter à mon agenda
           </button>
         )}
       </div>
+
+      {exportHint && <p className="planning-export__hint">{EXPORT_HINT}</p>}
 
       {isDesktop ? <PlanningGrid days={days} /> : <PlanningList days={days} />}
     </div>

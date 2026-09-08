@@ -80,29 +80,53 @@ function isIOS() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 }
 
-export function downloadPlanningIcs(days) {
-  const ics = buildPlanningIcs(days);
-  if (!ics) return false;
+// The native "Add to Calendar" Quick Look preview for .ics files is a
+// Safari browser-chrome feature, not a web-platform capability: Chrome,
+// Firefox and Edge on iOS all render with WebKit but ship their own
+// download/share UI, so they never expose that preview — a Blob URL just
+// ends up in the generic OS share sheet with the file shown as "Unknown".
+// Safari is therefore the only iOS browser that can get the direct
+// import flow; everything else gets a real download with the right
+// filename/extension so it can be opened from the Fichiers app instead.
+function iosBrowserKind() {
+  const ua = navigator.userAgent;
+  if (/CriOS/.test(ua)) return "chrome";
+  if (/FxiOS/.test(ua)) return "firefox";
+  if (/EdgiOS/.test(ua)) return "edge";
+  if (/OPiOS/.test(ua)) return "opera";
+  return "safari";
+}
 
-  if (isIOS()) {
-    // iOS Safari ignores the `download` attribute for calendar files and
-    // shows a Save-to-Files sheet instead of the native "Add to Calendar"
-    // preview. A same-origin Blob URL (not a data: URI — modern Safari
-    // blocks top-level navigation to those) triggers that preview instead.
-    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    window.location.href = url;
-    return true;
-  }
-
-  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+function triggerDownload(url) {
   const a = document.createElement("a");
   a.href = url;
   a.download = "planning-coach.ics";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+// Returns { ok, mode } — mode is "preview" (Safari's native Add-to-Calendar
+// flow), "download-hint" (non-Safari iOS: downloaded, needs the Fichiers-app
+// hint), or "download" (desktop/Android: plain file download).
+export function downloadPlanningIcs(days) {
+  const ics = buildPlanningIcs(days);
+  if (!ics) return { ok: false };
+
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  if (isIOS()) {
+    if (iosBrowserKind() === "safari") {
+      window.location.href = url;
+      return { ok: true, mode: "preview" };
+    }
+    triggerDownload(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    return { ok: true, mode: "download-hint" };
+  }
+
+  triggerDownload(url);
   URL.revokeObjectURL(url);
-  return true;
+  return { ok: true, mode: "download" };
 }

@@ -43,6 +43,16 @@
   color: var(--ink-62);
 }
 
+.planning-export__hint {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-66);
+}
+
 .planning-weeks {
   display: flex;
   flex-direction: column;
