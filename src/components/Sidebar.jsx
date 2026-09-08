@@ -4,7 +4,6 @@ import { useProfile } from "../hooks/useProfile";
 import { useSubjects } from "../hooks/useSubjects";
 import { useNotions } from "../hooks/useNotions";
 import { subjectMasteryPct } from "../lib/mastery";
-import { supabase } from "../lib/supabaseClient";
 import "./Sidebar.css";
 
 const NAV = [
@@ -86,11 +85,11 @@ export function Sidebar() {
 
       <div className="sidebar__spacer" />
 
-      <button className="sidebar__user" onClick={() => supabase.auth.signOut()} title="Se déconnecter">
+      <Link to="/profile" className="sidebar__user">
         <span className="sidebar__user-avatar">{profile?.initials ?? "…"}</span>
         {profile?.display_name ?? "…"}
-        <Icon name="sign-out" size={14} style={{ marginLeft: "auto", color: "var(--ink-45)" }} />
-      </button>
+        <Icon name="caret-up-down" size={14} style={{ marginLeft: "auto", color: "var(--ink-45)" }} />
+      </Link>
     </nav>
   );
 }

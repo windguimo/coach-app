@@ -8,6 +8,7 @@ import { PlanningScreen } from "./screens/PlanningScreen";
 import { SessionScreen } from "./screens/SessionScreen";
 import { ProgressScreen } from "./screens/ProgressScreen";
 import { RevisionsScreen } from "./screens/RevisionsScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 
 function App() {
@@ -59,6 +60,16 @@ function App() {
           <RequireAuth>
             <AppShell>
               <RevisionsScreen />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <ProfileScreen />
             </AppShell>
           </RequireAuth>
         }
