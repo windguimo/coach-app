@@ -185,6 +185,59 @@
   font-weight: 500;
 }
 
+.profile-subject__confirm {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: rgba(191, 51, 44, 0.06);
+}
+
+.profile-subject__confirm span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-72);
+}
+
+.profile-subject__confirm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.profile-subject__confirm-cancel,
+.profile-subject__confirm-delete {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 999px;
+  font: 500 12px/1.2 var(--font-body);
+}
+
+.profile-subject__confirm-cancel {
+  border: 1px solid var(--ink-16);
+  background: var(--bg);
+  color: var(--ink-72);
+}
+
+.profile-subject__confirm-cancel:hover {
+  background: var(--surface);
+}
+
+.profile-subject__confirm-delete {
+  border: 1px solid transparent;
+  background: #bf332c;
+  color: #fff;
+}
+
+.profile-subject__confirm-delete:hover {
+  background: #a52c26;
+}
+
+.profile-subject__confirm-cancel:disabled,
+.profile-subject__confirm-delete:disabled {
+  opacity: 0.6;
+}
+
 .profile-pace {
   display: flex;
   align-items: center;
