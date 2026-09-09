@@ -126,6 +126,28 @@
   border-radius: 2px;
 }
 
+.profile-subject__freqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.freq-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font: 400 11.5px/1.2 var(--font-body);
+  border: 1px solid var(--ink-16);
+  background: var(--bg);
+  color: var(--ink-72);
+}
+
+.freq-chip--on {
+  border-color: var(--ink);
+  background: var(--accent);
+  color: var(--ink);
+}
+
 .profile-pace {
   display: flex;
   align-items: center;
