@@ -91,9 +91,17 @@ create policy "content_library_questions: select for authenticated" on public.co
   for select to authenticated using (true);
 
 -- ─────────────────────────── course_modules becomes a per-user pointer ───────────────────────────
--- No inline content or existing rows worth migrating (this table only ever
--- held disposable, regenerable AI output), so drop and recreate rather than
--- carry an ALTER TABLE migration for columns that are being removed anyway.
+-- No inline content worth migrating (this table only ever held disposable,
+-- regenerable AI output), so drop and recreate rather than carry an ALTER
+-- TABLE migration for columns that are being removed anyway.
+--
+-- quiz_attempts.quiz_question_id points at the quiz_questions row being
+-- dropped here, and nothing in the app reads quiz_attempts directly (XP,
+-- streak and notion mastery are already persisted on profiles/notions, not
+-- derived from this log) — so any existing attempt history is cleared
+-- before quiz_questions goes away, rather than left dangling against a
+-- table that no longer exists.
+delete from public.quiz_attempts;
 drop table if exists public.quiz_questions cascade;
 drop table if exists public.course_modules cascade;
 
