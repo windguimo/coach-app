@@ -5,13 +5,15 @@
 //
 // Content is cached in a *shared* library (`content_library` /
 // `content_library_questions`), keyed by a normalized topic slug + module
-// index — not per user. So the first user anywhere to reach "module 3 of
-// Négociation commerciale" pays for the Claude call; every other user on
-// that same topic (however they spelled or capitalized it) gets the cached
-// content for free. Only lightweight per-user pointer rows (`course_modules`:
-// which module a user is on, their notion link) and mastery/attempt data
-// stay per user — see supabase/migrations/0007_shared_content_library.sql
-// for the normalization/staleness rationale.
+// index + the user's daily pace — not per user. So the first user anywhere
+// to reach "module 3 of Négociation commerciale at the 15 min pace" pays for
+// the Claude call; every other user on that same topic and pace (however
+// they spelled or capitalized the subject) gets the cached content for
+// free. Only lightweight per-user pointer rows (`course_modules`: which
+// module a user is on, their notion link) and mastery/attempt data stay per
+// user — see supabase/migrations/0007_shared_content_library.sql for the
+// normalization/staleness rationale and 0009_pace_aware_content.sql for the
+// pace dimension.
 //
 // POST body: { subject_id: string }
 // Auth: forwards the caller's JWT so RLS scopes per-user reads/writes to
@@ -30,48 +32,68 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const LESSON_TOOL = {
-  name: "emit_lesson",
-  description: "Emit one structured coaching lesson (a short course + a 2-question quiz) in French.",
-  input_schema: {
-    type: "object",
-    properties: {
-      notion_label: { type: "string", description: "Short name (2-5 words) of the specific notion this module teaches." },
-      eyebrow: { type: "string", description: "Small label above the title, e.g. 'Cours · lu en 6 min'." },
-      title: { type: "string", description: "Lesson title, punchy, 3-6 words." },
-      paragraphs: {
-        type: "array",
-        items: { type: "string" },
-        description: "Exactly two paragraphs (array length must be 2) of lesson content, 60-100 words each, encouraging and concrete tone.",
-      },
-      takeaway: { type: "string", description: "One memorable sentence summarizing the key idea." },
-      quiz: {
-        type: "array",
-        description: "Exactly two quiz questions (array length must be 2).",
-        items: {
-          type: "object",
-          properties: {
-            prompt: { type: "string" },
-            options: {
-              type: "array",
-              items: { type: "string" },
-              description: "Exactly four answer options (array length must be 4).",
+// Content size scales with the user's chosen daily pace — previously every
+// module had a hardcoded 2 paragraphs + 2 quiz questions regardless of
+// pace, so a "10 min" session was actually done in under a minute. Rough
+// budget: ~25s/paragraph, ~35s/question (reading + answering + explanation).
+// Only the 4 ONBOARDING_PACES values are expected; anything else falls
+// back to the 15-min tier.
+const CONTENT_SIZE_BY_MINUTES: Record<number, { paragraphs: number; quiz: number }> = {
+  10: { paragraphs: 3, quiz: 5 },
+  15: { paragraphs: 4, quiz: 7 },
+  25: { paragraphs: 6, quiz: 10 },
+  40: { paragraphs: 8, quiz: 14 },
+};
+const DEFAULT_CONTENT_SIZE = CONTENT_SIZE_BY_MINUTES[15];
+
+function contentSizeFor(dailyMinutes: number | null | undefined) {
+  return CONTENT_SIZE_BY_MINUTES[dailyMinutes ?? -1] ?? DEFAULT_CONTENT_SIZE;
+}
+
+function buildLessonTool(paragraphCount: number, quizCount: number) {
+  return {
+    name: "emit_lesson",
+    description: `Emit one structured coaching lesson (a short course + a ${quizCount}-question quiz) in French.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        notion_label: { type: "string", description: "Short name (2-5 words) of the specific notion this module teaches." },
+        eyebrow: { type: "string", description: "Small label above the title, e.g. 'Cours · lu en 6 min'." },
+        title: { type: "string", description: "Lesson title, punchy, 3-6 words." },
+        paragraphs: {
+          type: "array",
+          items: { type: "string" },
+          description: `Exactly ${paragraphCount} paragraphs (array length must be ${paragraphCount}) of lesson content, 60-100 words each, encouraging and concrete tone.`,
+        },
+        takeaway: { type: "string", description: "One memorable sentence summarizing the key idea." },
+        quiz: {
+          type: "array",
+          description: `Exactly ${quizCount} quiz questions (array length must be ${quizCount}).`,
+          items: {
+            type: "object",
+            properties: {
+              prompt: { type: "string" },
+              options: {
+                type: "array",
+                items: { type: "string" },
+                description: "Exactly four answer options (array length must be 4).",
+              },
+              correct_index: { type: "integer", description: "Index of the correct option in `options`, between 0 and 3 inclusive." },
+              explanation: { type: "string", description: "1-2 sentences explaining why the correct option is right." },
             },
-            correct_index: { type: "integer", description: "Index of the correct option in `options`, between 0 and 3 inclusive." },
-            explanation: { type: "string", description: "1-2 sentences explaining why the correct option is right." },
+            required: ["prompt", "options", "correct_index", "explanation"],
+            additionalProperties: false,
           },
-          required: ["prompt", "options", "correct_index", "explanation"],
-          additionalProperties: false,
         },
       },
+      required: ["notion_label", "eyebrow", "title", "paragraphs", "takeaway", "quiz"],
+      additionalProperties: false,
     },
-    required: ["notion_label", "eyebrow", "title", "paragraphs", "takeaway", "quiz"],
-    additionalProperties: false,
-  },
-  strict: true,
-};
+    strict: true,
+  };
+}
 
-async function generateLesson(subjectLabel: string, moduleIndex: number) {
+async function generateLesson(subjectLabel: string, moduleIndex: number, paragraphCount: number, quizCount: number) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -84,18 +106,19 @@ async function generateLesson(subjectLabel: string, moduleIndex: number) {
       max_tokens: 4000,
       thinking: { type: "disabled" },
       output_config: { effort: "low" },
-      tools: [LESSON_TOOL],
+      tools: [buildLessonTool(paragraphCount, quizCount)],
       tool_choice: { type: "tool", name: "emit_lesson" },
       system:
         "Tu es le moteur de contenu d'une app de coaching pour professionnels en montée de compétence. " +
-        "Rythme quotidien de 15 minutes, ton encourageant mais exigeant, jamais condescendant. " +
+        "Ton encourageant mais exigeant, jamais condescendant. " +
         "Le contenu doit être concret, actionnable, avec des exemples professionnels réalistes. Toujours en français.",
       messages: [
         {
           role: "user",
           content:
             `Génère le module ${moduleIndex} d'un parcours sur le sujet « ${subjectLabel} ». ` +
-            `Choisis une notion précise et progressive pour ce module (pas trop large), un cours court dessus, et un quiz de 2 questions qui testent cette notion.`,
+            `Choisis une notion précise et progressive pour ce module (pas trop large), un cours de ${paragraphCount} paragraphes dessus, ` +
+            `et un quiz de ${quizCount} questions qui testent cette notion sous des angles variés (pas de redondance entre les questions).`,
         },
       ],
     }),
@@ -126,12 +149,13 @@ function displayContentFields(content: any) {
 // Shared-cache lookup: any authenticated client can SELECT content_library
 // (RLS grants that), so the user-scoped client is enough here — no need for
 // the service-role client on the read path.
-async function findLibraryContent(client: any, topicSlug: string, moduleIndex: number) {
+async function findLibraryContent(client: any, topicSlug: string, moduleIndex: number, targetMinutes: number) {
   const { data, error } = await client
     .from("content_library")
     .select(`${LIBRARY_CONTENT_FIELDS}, reuse_count, content_library_questions(${LIBRARY_QUESTION_FIELDS})`)
     .eq("topic_slug", topicSlug)
     .eq("module_index", moduleIndex)
+    .eq("target_minutes", targetMinutes)
     .maybeSingle();
   if (error) throw error;
   return data;
@@ -139,13 +163,21 @@ async function findLibraryContent(client: any, topicSlug: string, moduleIndex: n
 
 // Shared-cache write: content_library has no insert policy for regular
 // users, so this must go through the service-role client, which bypasses RLS.
-async function writeLibraryContent(admin: any, topicSlug: string, topicLabel: string, moduleIndex: number, lesson: any) {
+async function writeLibraryContent(
+  admin: any,
+  topicSlug: string,
+  topicLabel: string,
+  moduleIndex: number,
+  targetMinutes: number,
+  lesson: any,
+) {
   const { data: created, error } = await admin
     .from("content_library")
     .insert({
       topic_slug: topicSlug,
       topic_label: topicLabel,
       module_index: moduleIndex,
+      target_minutes: targetMinutes,
       notion_label: lesson.notion_label,
       eyebrow: lesson.eyebrow,
       title: lesson.title,
@@ -156,11 +188,11 @@ async function writeLibraryContent(admin: any, topicSlug: string, topicLabel: st
     .single();
 
   if (error) {
-    // Unique violation on (topic_slug, module_index): another request
-    // generated this exact module concurrently — reuse it instead of
-    // erroring or paying for a second, wasted Claude call.
+    // Unique violation on (topic_slug, module_index, target_minutes):
+    // another request generated this exact module concurrently — reuse it
+    // instead of erroring or paying for a second, wasted Claude call.
     if (error.code === "23505") {
-      const existing = await findLibraryContent(admin, topicSlug, moduleIndex);
+      const existing = await findLibraryContent(admin, topicSlug, moduleIndex, targetMinutes);
       if (existing) return existing;
     }
     throw error;
@@ -212,6 +244,10 @@ Deno.serve(async (req) => {
       .single();
     if (subjectErr || !subject) throw new Error("subject not found (or not yours)");
 
+    const { data: profile } = await supabase.from("profiles").select("daily_minutes").eq("id", user.id).single();
+    const { paragraphs: paragraphCount, quiz: quizCount } = contentSizeFor(profile?.daily_minutes);
+    const targetMinutes = profile?.daily_minutes ?? 15;
+
     // Each user still progresses through modules 1, 2, 3... independently
     // for their own subject — this stays a per-user count.
     const { count } = await supabase
@@ -244,13 +280,13 @@ Deno.serve(async (req) => {
     const { data: topicSlug, error: slugErr } = await supabase.rpc("slugify_topic", { p_label: subject.label });
     if (slugErr) throw slugErr;
 
-    let content = await findLibraryContent(supabase, topicSlug, moduleIndex);
+    let content = await findLibraryContent(supabase, topicSlug, moduleIndex, targetMinutes);
     if (content) {
       // Shared cache hit — reuse existing content, no Claude call.
       await admin.from("content_library").update({ reuse_count: content.reuse_count + 1 }).eq("id", content.id);
     } else {
-      const lesson = await generateLesson(subject.label, moduleIndex);
-      content = await writeLibraryContent(admin, topicSlug, subject.label, moduleIndex, lesson);
+      const lesson = await generateLesson(subject.label, moduleIndex, paragraphCount, quizCount);
+      content = await writeLibraryContent(admin, topicSlug, subject.label, moduleIndex, targetMinutes, lesson);
     }
 
     let { data: notion } = await supabase
