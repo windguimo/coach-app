@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { useAuth } from "../lib/auth";
@@ -25,6 +26,8 @@ export function ProfileScreen() {
   const { profile, loading } = useProfile();
   const { subjects, loading: subjectsLoading, refresh: refreshSubjects } = useSubjects();
   const { notions, loading: notionsLoading } = useNotions();
+  const [confirmingId, setConfirmingId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   if (loading || subjectsLoading || notionsLoading || !profile) return <div className="today-loading">Chargement…</div>;
 
@@ -42,10 +45,13 @@ export function ProfileScreen() {
 
   // Deletes the subject and its notions/course history (cascade); future
   // plan_days are purged too so the schedule rebuilds around the remaining
-  // subjects (see delete_subject).
-  const deleteSubject = async (subjectId, label) => {
-    if (!window.confirm(`Supprimer « ${label} » ? Votre progression sur ce sujet sera perdue.`)) return;
+  // subjects (see delete_subject). Confirmation is inline (below) rather
+  // than a native window.confirm, to stay in the app's own visual language.
+  const confirmDelete = async (subjectId) => {
+    setDeleting(true);
     const { error } = await supabase.rpc("delete_subject", { p_subject_id: subjectId });
+    setDeleting(false);
+    setConfirmingId(null);
     if (!error) refreshSubjects();
   };
 
@@ -107,7 +113,7 @@ export function ProfileScreen() {
                       <span className="profile-subject__pct">{pct} %</span>
                       <button
                         className="profile-subject__delete"
-                        onClick={() => deleteSubject(s.id, s.label)}
+                        onClick={() => setConfirmingId(s.id)}
                         aria-label={`Supprimer ${s.label}`}
                       >
                         <Icon name="trash" size={14} />
@@ -120,18 +126,35 @@ export function ProfileScreen() {
                       style={{ width: `${pct}%`, background: s.tone === "accent" ? "var(--accent)" : "var(--neutral-mark)" }}
                     />
                   </div>
-                  <div className="profile-subject__freq-label">Rythme</div>
-                  <div className="profile-subject__freqs">
-                    {SESSION_FREQUENCIES.map((f) => (
-                      <button
-                        key={f.value}
-                        className={`freq-chip${(s.sessions_per_week ?? 7) === f.value ? " freq-chip--on" : ""}`}
-                        onClick={() => setSubjectFrequency(s.id, f.value)}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
+
+                  {confirmingId === s.id ? (
+                    <div className="profile-subject__confirm">
+                      <span>Supprimer « {s.label} » ? Votre progression sur ce sujet sera perdue.</span>
+                      <div className="profile-subject__confirm-actions">
+                        <button className="profile-subject__confirm-cancel" onClick={() => setConfirmingId(null)} disabled={deleting}>
+                          Annuler
+                        </button>
+                        <button className="profile-subject__confirm-delete" onClick={() => confirmDelete(s.id)} disabled={deleting}>
+                          {deleting ? "…" : "Supprimer"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="profile-subject__freq-label">Rythme</div>
+                      <div className="profile-subject__freqs">
+                        {SESSION_FREQUENCIES.map((f) => (
+                          <button
+                            key={f.value}
+                            className={`freq-chip${(s.sessions_per_week ?? 7) === f.value ? " freq-chip--on" : ""}`}
+                            onClick={() => setSubjectFrequency(s.id, f.value)}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </li>
               );
             })}
