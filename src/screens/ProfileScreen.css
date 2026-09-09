@@ -101,7 +101,13 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+
+.profile-subject {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-line);
 }
 
 .profile-subject__row {
@@ -109,6 +115,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 13.5px;
+  font-weight: 500;
 }
 
 .profile-subject__row-right {
@@ -136,8 +143,8 @@
 }
 
 .profile-subject__track {
-  height: 4px;
-  margin-top: 6px;
+  height: 3px;
+  margin-top: 8px;
   border-radius: 2px;
   background: var(--ink-1);
 }
@@ -147,26 +154,35 @@
   border-radius: 2px;
 }
 
+.profile-subject__freq-label {
+  margin-top: 12px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+
 .profile-subject__freqs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 5px;
+  margin-top: 6px;
 }
 
 .freq-chip {
-  padding: 5px 10px;
+  padding: 4px 9px;
   border-radius: 999px;
-  font: 400 11.5px/1.2 var(--font-body);
-  border: 1px solid var(--ink-16);
-  background: var(--bg);
-  color: var(--ink-72);
+  font: 400 11px/1.2 var(--font-body);
+  border: 1px solid var(--ink-1);
+  background: var(--ink-06);
+  color: var(--ink-62);
 }
 
 .freq-chip--on {
-  border-color: var(--ink);
+  border-color: transparent;
   background: var(--accent);
   color: var(--ink);
+  font-weight: 500;
 }
 
 .profile-pace {

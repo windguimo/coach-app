@@ -120,6 +120,7 @@ export function ProfileScreen() {
                       style={{ width: `${pct}%`, background: s.tone === "accent" ? "var(--accent)" : "var(--neutral-mark)" }}
                     />
                   </div>
+                  <div className="profile-subject__freq-label">Rythme</div>
                   <div className="profile-subject__freqs">
                     {SESSION_FREQUENCIES.map((f) => (
                       <button
