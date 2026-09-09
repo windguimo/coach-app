@@ -9,6 +9,10 @@ const FUTURE_DAYS = 14;
 // A rolling 3-week view: the last 7 days + today + the next 14 days.
 // ensure_plan_days() extends the schedule forward and reconciles past days
 // against real activity (done vs missed) before we read it.
+//
+// A calendar day can now carry more than one row (per-subject weekly
+// frequency) — group plan_days rows by day_date so each entry here is one
+// day with its own list of scheduled sessions, not a raw row.
 export function usePlanning() {
   const { session } = useAuth();
   const [days, setDays] = useState([]);
@@ -31,10 +35,28 @@ export function usePlanning() {
       .lte("day_date", to.toISOString().slice(0, 10))
       .order("day_date", { ascending: true });
 
-    const rows = (data ?? []).map((d) => {
-      const date = new Date(d.day_date + "T00:00:00");
-      return { ...d, dayLabel: DAY_LABELS[date.getDay()], dateNum: date.getDate(), monthLabel: date.toLocaleDateString("fr-FR", { month: "short" }) };
-    });
+    const byDate = new Map();
+    for (const row of data ?? []) {
+      if (!byDate.has(row.day_date)) byDate.set(row.day_date, []);
+      byDate.get(row.day_date).push(row);
+    }
+
+    // Walk every calendar date in range, not just dates with rows — a
+    // subject set to less than every active day can leave a date with zero
+    // scheduled sessions, and the grid needs a stable 7-per-week alignment
+    // regardless (an entirely missing date would shift the whole grid).
+    const rows = [];
+    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      const day_date = d.toISOString().slice(0, 10);
+      rows.push({
+        id: day_date,
+        day_date,
+        sessions: byDate.get(day_date) ?? [],
+        dayLabel: DAY_LABELS[d.getDay()],
+        dateNum: d.getDate(),
+        monthLabel: d.toLocaleDateString("fr-FR", { month: "short" }),
+      });
+    }
     setDays(rows);
     setLoading(false);
   }, [session]);

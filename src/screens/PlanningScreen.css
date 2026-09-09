@@ -66,9 +66,15 @@
   gap: 8px;
 }
 
+.planning-day-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .planning-day {
   display: block;
-  min-height: 84px;
+  min-height: 76px;
   padding: 10px 10px 12px;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-line-inset);
@@ -94,6 +100,7 @@
 .planning-day__date {
   font-size: 10.5px;
   color: var(--ink-45);
+  padding: 0 2px;
 }
 
 .planning-day__mark {
@@ -161,12 +168,26 @@
   margin-top: 18px;
 }
 
+.planning-row-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--ink-08);
+}
+
+.planning-row-group__sessions {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .planning-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 4px;
-  border-bottom: 1px solid var(--ink-08);
   color: inherit;
   text-decoration: none;
 }

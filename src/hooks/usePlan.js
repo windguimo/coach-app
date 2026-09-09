@@ -33,7 +33,9 @@ export function usePlan() {
     refresh();
   }, [refresh]);
 
-  const today = days.find((d) => d.status === "today");
+  // A day can now carry more than one subject (per-subject weekly
+  // frequency, see ensure_plan_days) — today is a list, not a single row.
+  const today = days.filter((d) => d.status === "today");
 
   return { days, today, loading, refresh };
 }

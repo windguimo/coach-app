@@ -49,16 +49,55 @@ function EmptyOnboardingPrompt() {
   );
 }
 
-function SessionCTA({ today }) {
-  if (!today || !today.subject_id) {
-    return <div className="quiz-hint">Rien de prévu aujourd'hui — profitez-en pour réviser une notion.</div>;
-  }
+function SessionCTA({ day }) {
   return (
-    <Link to={`/session?subject=${today.subject_id}`} className="btn-accent">
+    <Link to={`/session?subject=${day.subject_id}`} className="btn-accent">
       Commencer
       <Icon name="arrow-right" size={15} />
     </Link>
   );
+}
+
+// today can now hold 0, 1 or several rows (per-subject weekly frequency) —
+// one session-card per subject due today, or a single empty-state card.
+function SessionCards({ today, minutes, mobile }) {
+  if (today.length === 0) {
+    return (
+      <div className={`session-card${mobile ? " session-card--mobile" : ""}`}>
+        <div className="session-card__eyebrow">
+          <span className="accent-tick" />
+          <div className="eyebrow">Séance du jour</div>
+        </div>
+        <div className="quiz-hint">Rien de prévu aujourd'hui — profitez-en pour réviser une notion.</div>
+      </div>
+    );
+  }
+
+  return today.map((day) => (
+    <div key={day.id} className={`session-card${mobile ? " session-card--mobile" : ""}`}>
+      <div className="session-card__eyebrow">
+        <span className="accent-tick" />
+        <div className="eyebrow">Séance du jour · {day.minutes ?? minutes} min</div>
+      </div>
+      {mobile ? (
+        <>
+          <h3 className="session-card__title session-card__title--mobile">{day.subjects?.label ?? day.label ?? "—"}</h3>
+          <div className="session-card__module">Contenu généré pour votre niveau</div>
+          <div style={{ marginTop: 16 }}>
+            <SessionCTA day={day} />
+          </div>
+        </>
+      ) : (
+        <div className="session-card__row">
+          <div>
+            <h3 className="session-card__title">{day.subjects?.label ?? day.label ?? "—"}</h3>
+            <div className="session-card__module">Contenu généré pour votre niveau</div>
+          </div>
+          <SessionCTA day={day} />
+        </div>
+      )}
+    </div>
+  ));
 }
 
 // ───────────────────────── Desktop ─────────────────────────
@@ -86,19 +125,7 @@ function TodayDesktop({ profile, subjects, notions, days, today, cells, mileston
           </span>
         </div>
 
-        <div className="session-card">
-          <div className="session-card__eyebrow">
-            <span className="accent-tick" />
-            <div className="eyebrow">Séance du jour · {profile.daily_minutes} min</div>
-          </div>
-          <div className="session-card__row">
-            <div>
-              <h3 className="session-card__title">{today?.subjects?.label ?? today?.label ?? "—"}</h3>
-              <div className="session-card__module">Contenu généré pour votre niveau</div>
-            </div>
-            <SessionCTA today={today} />
-          </div>
-        </div>
+        <SessionCards today={today} minutes={profile.daily_minutes} />
 
         <ReminderBanner />
 
@@ -200,17 +227,7 @@ function TodayMobile({ profile, subjects, notions, today }) {
       <h2 className="today-mobile__greeting">Bonjour {profile.display_name}.</h2>
       <p className="today-mobile__subtitle">{profile.daily_minutes} minutes aujourd'hui, et la semaine est tenue.</p>
 
-      <div className="session-card session-card--mobile">
-        <div className="session-card__eyebrow">
-          <span className="accent-tick" />
-          <div className="eyebrow">Séance du jour · {profile.daily_minutes} min</div>
-        </div>
-        <h3 className="session-card__title session-card__title--mobile">{today?.subjects?.label ?? today?.label ?? "—"}</h3>
-        <div className="session-card__module">Contenu généré pour votre niveau</div>
-        <div style={{ marginTop: 16 }}>
-          <SessionCTA today={today} />
-        </div>
-      </div>
+      <SessionCards today={today} minutes={profile.daily_minutes} mobile />
 
       <ReminderBanner />
 

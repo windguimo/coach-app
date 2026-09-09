@@ -6,6 +6,7 @@ import { useSubjects } from "../hooks/useSubjects";
 import { useNotions } from "../hooks/useNotions";
 import { subjectMasteryPct } from "../lib/mastery";
 import { supabase } from "../lib/supabaseClient";
+import { SESSION_FREQUENCIES } from "../data/content";
 import "./ProfileScreen.css";
 
 // Postgres dow convention (0=Sun..6=Sat), Mon..Sun display order.
@@ -22,10 +23,22 @@ const DAY_NAMES = [
 export function ProfileScreen() {
   const { session } = useAuth();
   const { profile, loading } = useProfile();
-  const { subjects, loading: subjectsLoading } = useSubjects();
+  const { subjects, loading: subjectsLoading, refresh: refreshSubjects } = useSubjects();
   const { notions, loading: notionsLoading } = useNotions();
 
   if (loading || subjectsLoading || notionsLoading || !profile) return <div className="today-loading">Chargement…</div>;
+
+  // Changing a subject's frequency re-triggers the scheduler for future days
+  // (see update_subject_frequency) — refresh subjects so the chip reflects
+  // it immediately; Today/Planning pick up the new schedule on their own
+  // next refresh (they call ensure_plan_days on mount).
+  const setSubjectFrequency = async (subjectId, sessionsPerWeek) => {
+    const { error } = await supabase.rpc("update_subject_frequency", {
+      p_subject_id: subjectId,
+      p_sessions_per_week: sessionsPerWeek,
+    });
+    if (!error) refreshSubjects();
+  };
 
   const activeDays = profile.active_days ?? [0, 1, 2, 3, 4, 5, 6];
   const daysLabel =
@@ -88,6 +101,17 @@ export function ProfileScreen() {
                       className="profile-subject__fill"
                       style={{ width: `${pct}%`, background: s.tone === "accent" ? "var(--accent)" : "var(--neutral-mark)" }}
                     />
+                  </div>
+                  <div className="profile-subject__freqs">
+                    {SESSION_FREQUENCIES.map((f) => (
+                      <button
+                        key={f.value}
+                        className={`freq-chip${(s.sessions_per_week ?? 7) === f.value ? " freq-chip--on" : ""}`}
+                        onClick={() => setSubjectFrequency(s.id, f.value)}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
                   </div>
                 </li>
               );
