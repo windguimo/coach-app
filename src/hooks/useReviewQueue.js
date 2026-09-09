@@ -15,6 +15,13 @@ function shuffle(arr) {
 
 // Questions from previously generated modules whose notion isn't "solide"
 // yet — free to serve (no Claude call), and doubles as spaced practice.
+//
+// Quiz content now lives in the shared content_library_questions table, not
+// per user, so we can't filter it directly by the user's notions. Instead
+// we start from course_modules (the user's own pointer rows, RLS-scoped),
+// reach the shared questions through content_library, and flatten the
+// per-module questions back into a single list — each one carrying its
+// notion, same shape RevisionsScreen expects.
 export function useReviewQueue() {
   const { session } = useAuth();
   const [questions, setQuestions] = useState(null); // null = loading
@@ -25,8 +32,10 @@ export function useReviewQueue() {
     setQuestions(null);
     setError(null);
     const { data, error: err } = await supabase
-      .from("quiz_questions")
-      .select("*, notions!inner(label, filled, status_label)")
+      .from("course_modules")
+      .select(
+        "notions!inner(label, filled, status_label), content_library(content_library_questions(id, prompt, options, correct_index, explanation))",
+      )
       .lt("notions.filled", 5)
       .limit(50);
     if (err) {
@@ -34,7 +43,10 @@ export function useReviewQueue() {
       setQuestions([]);
       return;
     }
-    setQuestions(shuffle(data ?? []).slice(0, QUEUE_SIZE));
+    const flattened = (data ?? []).flatMap((row) =>
+      (row.content_library?.content_library_questions ?? []).map((q) => ({ ...q, notions: row.notions })),
+    );
+    setQuestions(shuffle(flattened).slice(0, QUEUE_SIZE));
   }, [session]);
 
   useEffect(() => {
