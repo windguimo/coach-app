@@ -2,9 +2,13 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { RequireAuth } from "./lib/auth";
 import { AuthScreen } from "./screens/AuthScreen";
+import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { TodayScreen } from "./screens/TodayScreen";
+import { PlanningScreen } from "./screens/PlanningScreen";
 import { SessionScreen } from "./screens/SessionScreen";
 import { ProgressScreen } from "./screens/ProgressScreen";
+import { RevisionsScreen } from "./screens/RevisionsScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 
 function App() {
@@ -12,6 +16,14 @@ function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/today" replace />} />
       <Route path="/login" element={<AuthScreen />} />
+      <Route
+        path="/reset-password"
+        element={
+          <RequireAuth>
+            <ResetPasswordScreen />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/today"
         element={
@@ -23,11 +35,41 @@ function App() {
         }
       />
       <Route
+        path="/planning"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <PlanningScreen />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/progress"
         element={
           <RequireAuth>
             <AppShell>
               <ProgressScreen />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/revisions"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <RevisionsScreen />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <ProfileScreen />
             </AppShell>
           </RequireAuth>
         }

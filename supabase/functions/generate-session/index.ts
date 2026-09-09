@@ -10,7 +10,7 @@
 // that same topic (however they spelled or capitalized it) gets the cached
 // content for free. Only lightweight per-user pointer rows (`course_modules`:
 // which module a user is on, their notion link) and mastery/attempt data
-// stay per user — see supabase/migrations/0002_shared_content_library.sql
+// stay per user — see supabase/migrations/0007_shared_content_library.sql
 // for the normalization/staleness rationale.
 //
 // POST body: { subject_id: string }

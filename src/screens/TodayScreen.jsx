@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { Heatmap, LevelRing, MasteryList, MilestoneChips } from "../components/ProgressWidgets";
+import { ReminderBanner } from "../components/ReminderBanner";
+import { SubjectBadge } from "../components/SubjectBadge";
+import "../components/SubjectBadge.css";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useProfile, levelFromXp } from "../hooks/useProfile";
 import { useSubjects } from "../hooks/useSubjects";
@@ -97,6 +100,8 @@ function TodayDesktop({ profile, subjects, notions, days, today, cells, mileston
           </div>
         </div>
 
+        <ReminderBanner />
+
         <div className="today-desktop__week-header">
           <div className="section-label">Vos 7 prochains jours</div>
           <div className="today-desktop__week-meta">
@@ -104,17 +109,24 @@ function TodayDesktop({ profile, subjects, notions, days, today, cells, mileston
           </div>
         </div>
         <div className="week-grid">
-          {days.map((d) => (
-            <div key={d.id} className={`week-cell week-cell--${d.status}`}>
-              <div className="week-cell__date">
-                {d.dayLabel} {d.dateNum}
+          {days.map((d) => {
+            const subjectLabel = d.subjects?.label ?? d.label;
+            return (
+              <div key={d.id} className={`week-cell week-cell--${d.status}`}>
+                <div className="week-cell__date">
+                  {d.dayLabel} {d.dateNum}
+                </div>
+                {d.status === "done" && <Icon name="check" size={15} style={{ marginTop: 24, display: "block" }} />}
+                {d.status === "missed" && <Icon name="x" size={15} style={{ marginTop: 24, display: "block", color: "var(--ink-4)" }} />}
+                {d.status === "today" && <div className="week-cell__now">En cours</div>}
+                <div className="week-cell__label">
+                  {subjectLabel && <SubjectBadge label={subjectLabel} size={16} />}
+                  <span>{subjectLabel ?? (d.status === "off" ? "Repos" : "—")}</span>
+                </div>
+                {d.minutes != null && <div className="week-cell__minutes">{d.minutes} min</div>}
               </div>
-              {d.status === "done" && <Icon name="check" size={15} style={{ marginTop: 24, display: "block" }} />}
-              {d.status === "today" && <div className="week-cell__now">En cours</div>}
-              <div className="week-cell__label">{d.subjects?.label ?? d.label ?? "—"}</div>
-              {d.minutes != null && <div className="week-cell__minutes">{d.minutes} min</div>}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {recentNotions.length > 0 && (
@@ -199,6 +211,8 @@ function TodayMobile({ profile, subjects, notions, today }) {
           <SessionCTA today={today} />
         </div>
       </div>
+
+      <ReminderBanner />
 
       <div className="stat-cards">
         <div className="stat-card">

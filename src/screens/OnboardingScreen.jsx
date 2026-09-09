@@ -47,7 +47,12 @@ export function OnboardingScreen() {
 
       <div className="onboarding__chips">
         {ob.topics.map((t) => (
-          <button key={t.label} onClick={t.toggle} className={`chip${t.on ? " chip--on" : ""}`}>
+          <button
+            key={t.label}
+            onClick={t.toggle}
+            className={`chip${t.on ? " chip--on" : ""}${t.isCustom ? " chip--custom" : ""}`}
+          >
+            {t.isCustom && <Icon name="plus" size={13} style={{ marginRight: 5 }} />}
             {t.label}
           </button>
         ))}
@@ -74,8 +79,9 @@ export function OnboardingScreen() {
         <div className="plan-preview__line">{ob.planLine}</div>
         <div className="plan-preview__week">
           {ob.planWeek.map((d, i) => (
-            <div
+            <button
               key={i}
+              onClick={d.toggle}
               className="plan-preview__day"
               style={{
                 background: !d.on ? "var(--ink-06)" : d.weekend ? "rgba(198,240,74,.45)" : "var(--accent)",
@@ -83,10 +89,10 @@ export function OnboardingScreen() {
               }}
             >
               {d.label}
-            </div>
+            </button>
           ))}
         </div>
-        <div className="plan-preview__note">Séances écourtées le week-end. Modifiable plus tard.</div>
+        <div className="plan-preview__note">Cliquez un jour pour l'inclure ou non. Séances écourtées le week-end.</div>
       </div>
 
       <div className="onboarding__spacer" />

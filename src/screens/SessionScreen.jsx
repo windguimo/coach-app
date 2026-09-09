@@ -1,66 +1,12 @@
-import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { QuizOptions } from "../components/QuizOptions";
 import { SessionLoading } from "../components/SessionLoading";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useGeneratedSession } from "../hooks/useGeneratedSession";
+import { useQuizFlow } from "../hooks/useQuizFlow";
 import { useSubjects } from "../hooks/useSubjects";
 import "./SessionScreen.css";
-
-function optionKind(i, correctIndex, picked, answered) {
-  if (!answered) return "idle";
-  if (i === correctIndex) return "correct";
-  if (i === picked) return "wrong";
-  return "dim";
-}
-
-function useQuizFlow(quizQuestions, recordAttempt) {
-  const [qi, setQi] = useState(0);
-  const [picked, setPicked] = useState(null);
-  const [result, setResult] = useState(null); // { correct, xp_awarded, xp_total, streak_days }
-  const [submitting, setSubmitting] = useState(false);
-
-  const question = quizQuestions?.[qi];
-  const answered = picked !== null;
-  const isLast = qi === (quizQuestions?.length ?? 1) - 1;
-
-  const pick = async (i) => {
-    if (picked !== null || !question) return;
-    setPicked(i);
-    setSubmitting(true);
-    try {
-      const r = await recordAttempt(question.id, i);
-      setResult(r);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const next = () => {
-    setQi((n) => n + 1);
-    setPicked(null);
-    setResult(null);
-  };
-
-  return { question, qi, answered, isLast, picked, result, submitting, pick, next };
-}
-
-function QuizOptions({ question, picked, answered, onPick }) {
-  return (
-    <div className="quiz-options">
-      {question.options.map((label, i) => (
-        <button
-          key={i}
-          onClick={() => onPick(i)}
-          className={`quiz-option quiz-option--${optionKind(i, question.correct_index, picked, answered)}`}
-        >
-          <span className="quiz-option__label">{label}</span>
-          <span className="quiz-option__mark">{answered ? (i === question.correct_index ? "✓" : i === picked ? "×" : "") : ""}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function SessionScreen() {
   const isDesktop = useIsDesktop();

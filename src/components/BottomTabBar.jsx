@@ -1,13 +1,12 @@
 import { useLocation, Link } from "react-router-dom";
 import { Icon } from "./Icon";
-import { supabase } from "../lib/supabaseClient";
 import "./BottomTabBar.css";
 
 const TABS = [
   { id: "today", label: "Aujourd'hui", icon: "sun-horizon", to: "/today" },
-  { id: "planning", label: "Planning", icon: "calendar-blank", to: null },
+  { id: "planning", label: "Planning", icon: "calendar-blank", to: "/planning" },
   { id: "progress", label: "Progression", icon: "chart-line-up", to: "/progress" },
-  { id: "profile", label: "Profil", icon: "user", to: null, action: () => supabase.auth.signOut(), title: "Se déconnecter" },
+  { id: "profile", label: "Profil", icon: "user", to: "/profile" },
 ];
 
 export function BottomTabBar() {
@@ -16,32 +15,13 @@ export function BottomTabBar() {
   return (
     <nav className="tabbar" aria-label="Navigation principale">
       {TABS.map((tab) => {
-        const active = tab.to && pathname.startsWith(tab.to);
-        const content = (
-          <>
+        const active = pathname.startsWith(tab.to);
+        return (
+          <Link key={tab.id} to={tab.to} className={`tabbar__item${active ? " tabbar__item--active" : ""}`}>
             <Icon name={tab.icon} size={21} />
             <span className="tabbar__label">{tab.label}</span>
             {active && <span className="tabbar__mark" />}
-          </>
-        );
-        if (tab.to) {
-          return (
-            <Link key={tab.id} to={tab.to} className={`tabbar__item${active ? " tabbar__item--active" : ""}`}>
-              {content}
-            </Link>
-          );
-        }
-        if (tab.action) {
-          return (
-            <button key={tab.id} onClick={tab.action} className="tabbar__item" title={tab.title}>
-              {content}
-            </button>
-          );
-        }
-        return (
-          <span key={tab.id} className="tabbar__item" title="Bientôt disponible">
-            {content}
-          </span>
+          </Link>
         );
       })}
     </nav>

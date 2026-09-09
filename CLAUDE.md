@@ -18,19 +18,26 @@ Claude pour un "module" de son sujet. Progression suivie via XP, séries
 
 ```
 src/
-  screens/        # une vue par route : Auth, Onboarding, Today, Session, Progress
+  screens/        # une vue par route : Auth, Onboarding, Today, Session,
+                  # Révisions, Planning, Profile, Progress, ResetPassword
   hooks/          # tout l'accès Supabase passe par des hooks (use*.js)
-  components/     # composants partagés (AppShell, Sidebar, BottomTabBar…)
+  components/     # composants partagés (AppShell, Sidebar, BottomTabBar,
+                  # QuizOptions — partagé entre Session et Révisions…)
   data/content.js # listes statiques (sujets suggérés à l'onboarding, rythmes)
   lib/
     supabaseClient.js  # client Supabase (anon key)
     auth.jsx            # contexte d'authentification
     mastery.js           # calculs de progression côté client
+    push.js               # abonnement Web Push (rappels quotidiens)
+    ics.js                 # export .ics des séances à venir
 
 supabase/
-  migrations/            # schéma SQL, à appliquer dans l'ordre (0001, 0002…)
+  migrations/            # schéma SQL, cumulatif, à appliquer dans l'ordre
+                          # (0001…0007 à ce jour — voir chaque fichier pour
+                          # ce qu'il ajoute, pas de renumérotation a posteriori)
   functions/
     generate-session/    # Edge Function : génère (ou réutilise) un module de cours
+    send-reminders/       # Edge Function : rappel push quotidien (cron)
 ```
 
 ## Modèle de données (points clés)
@@ -42,16 +49,33 @@ supabase/
   **partagé entre tous les utilisateurs**, clé par
   `(topic_slug, module_index)` où `topic_slug` normalise le libellé libre du
   sujet (minuscules, sans accents/ponctuation — voir
-  `supabase/migrations/0002_shared_content_library.sql`). Lecture ouverte à
+  `supabase/migrations/0007_shared_content_library.sql`). Lecture ouverte à
   tout utilisateur authentifié ; écriture uniquement via le client
   service-role de l'Edge Function.
 - `course_modules` : pointeur **par utilisateur** vers `content_library`
   (quel module l'utilisateur en est, quelle notion ça alimente) — ne
   contient plus le texte du cours lui-même.
 - RPC Postgres notables : `apply_onboarding` (fixe les sujets + planning
-  d'un utilisateur), `record_quiz_attempt` (scoring serveur, XP, streak,
-  maîtrise des notions — jamais fait côté client), `slugify_topic`
-  (normalisation de sujet).
+  d'un utilisateur, respecte `profiles.active_days`), `ensure_plan_days`
+  (fait avancer le planning glissant, réconcilie les jours passés en
+  fonction de l'activité réelle), `record_quiz_attempt` (scoring serveur,
+  XP, streak, maîtrise des notions — jamais fait côté client),
+  `slugify_topic` (normalisation de sujet).
+- `push_subscriptions` : un abonnement Web Push par appareil, utilisé par
+  l'Edge Function `send-reminders` (déclenchée par cron) pour relancer les
+  utilisateurs qui n'ont pas fait leur séance du jour.
+
+## Révisions (pratique gratuite)
+
+`RevisionsScreen` (+ `useReviewQueue.js`) sert une file de questions déjà
+générées, pour les notions pas encore "solide", **sans appeler Claude** —
+zéro coût, effet répétition espacée. Comme les questions vivent maintenant
+dans `content_library_questions` (partagé, sans `user_id`), la requête part
+de `course_modules` (pointeur par utilisateur, RLS-scopé) et traverse
+`content_library` pour atteindre les questions, puis aplatit le résultat
+côté client. Si tu touches au schéma de contenu, vérifie cette requête —
+c'est le seul autre endroit (avec `generate-session`) qui lit
+`content_library_questions`.
 
 ## Flux de génération de session
 

@@ -12,6 +12,7 @@ export function usePlan() {
 
   const refresh = useCallback(async () => {
     if (!session) return;
+    await supabase.rpc("ensure_plan_days", { p_days_ahead: 14 });
     const today = new Date().toISOString().slice(0, 10);
     const { data } = await supabase
       .from("plan_days")

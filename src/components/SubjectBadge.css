@@ -1,0 +1,16 @@
+.subject-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--ink-08);
+  color: var(--ink-72);
+  font-weight: 600;
+  line-height: 1;
+  flex: none;
+}
+
+.week-cell--today .subject-badge {
+  background: rgba(23, 24, 26, 0.14);
+  color: var(--ink);
+}
