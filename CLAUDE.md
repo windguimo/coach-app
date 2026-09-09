@@ -33,12 +33,34 @@ src/
 
 supabase/
   migrations/            # schéma SQL, cumulatif, à appliquer dans l'ordre
-                          # (0001…0007 à ce jour — voir chaque fichier pour
+                          # (0001…0008 à ce jour — voir chaque fichier pour
                           # ce qu'il ajoute, pas de renumérotation a posteriori)
   functions/
     generate-session/    # Edge Function : génère (ou réutilise) un module de cours
     send-reminders/       # Edge Function : rappel push quotidien (cron)
 ```
+
+## Déploiement — piège à connaître
+
+Seul le **frontend** (GitHub Pages) se redéploie automatiquement au push sur
+`main`. Les deux morceaux backend sont **manuels** et il faut toujours penser
+aux deux après avoir touché au schéma ou à une Edge Function :
+
+- **Migrations SQL** : coller le contenu du nouveau fichier dans le SQL
+  Editor du dashboard Supabase et l'exécuter (pas de CLI/CI branché).
+- **Edge Functions** (`generate-session`, `send-reminders`) : redéployer avec
+  `npx supabase functions deploy <nom-de-la-fonction>` depuis la racine du
+  repo (après `npx supabase login` puis `npx supabase link --project-ref
+  xrmjhsgeipshejfwdklh`, une fois par machine).
+
+Oublier l'un des deux après un changement de schéma produit des erreurs
+trompeuses : une fonction pas redéployée qui référence une colonne/relation
+supprimée par une migration donne une erreur PostgREST ("Could not find the
+'x' column/relationship...") qui ressemble à un problème de schéma alors que
+le vrai problème est juste que le code déployé est resté en retard sur la
+base. Si ce genre d'erreur apparaît après une migration qui touchait des
+tables lues par une Edge Function, vérifier en premier si cette fonction a
+bien été redéployée depuis.
 
 ## Modèle de données (points clés)
 
