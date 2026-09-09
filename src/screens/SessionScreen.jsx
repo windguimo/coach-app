@@ -67,7 +67,7 @@ function SessionDesktop({ courseModule, quiz }) {
         </div>
         <span className="streak-pill" style={{ marginLeft: "auto" }}>
           <Icon name="lightning" size={13} />
-          question {quiz.qi + 1} sur {2}
+          question {quiz.qi + 1} sur {quiz.total}
         </span>
       </header>
 
@@ -98,7 +98,7 @@ function SessionDesktop({ courseModule, quiz }) {
             <>
               <div className="course-content__eyebrow">
                 <span className="accent-tick" />
-                <div className="eyebrow">Quiz · question {quiz.qi + 1} sur 2</div>
+                <div className="eyebrow">Quiz · question {quiz.qi + 1} sur {quiz.total}</div>
               </div>
               <h3 className="session-desktop__prompt">{quiz.question.prompt}</h3>
               <QuizOptions question={quiz.question} picked={quiz.picked} answered={quiz.answered} onPick={quiz.pick} />
@@ -164,13 +164,14 @@ function SessionMobile({ quiz }) {
           <Icon name="x" size={19} style={{ color: "var(--ink-45)" }} />
         </Link>
         <div className="step-bar step-bar--mobile">
-          <div className={`step-bar__seg step-bar__seg--${quiz.qi >= 0 ? "on" : "off"}`} />
-          <div className={`step-bar__seg step-bar__seg--${quiz.qi >= 1 ? "on" : "off"}`} />
+          {Array.from({ length: quiz.total }).map((_, i) => (
+            <div key={i} className={`step-bar__seg step-bar__seg--${quiz.qi >= i ? "on" : "off"}`} />
+          ))}
         </div>
       </div>
 
       <div className="session-mobile__prompt-block">
-        <div className="eyebrow">Question {quiz.qi + 1} sur 2</div>
+        <div className="eyebrow">Question {quiz.qi + 1} sur {quiz.total}</div>
         <h3 className="session-mobile__prompt">{quiz.question.prompt}</h3>
       </div>
 

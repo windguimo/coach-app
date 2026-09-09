@@ -9,9 +9,10 @@ export function useQuizFlow(quizQuestions, recordAttempt) {
   const [result, setResult] = useState(null); // { correct, xp_awarded, xp_total, streak_days }
   const [submitting, setSubmitting] = useState(false);
 
+  const total = quizQuestions?.length ?? 0;
   const question = quizQuestions?.[qi];
   const answered = picked !== null;
-  const isLast = qi === (quizQuestions?.length ?? 1) - 1;
+  const isLast = qi === total - 1;
 
   const pick = async (i) => {
     if (picked !== null || !question) return;
@@ -31,5 +32,5 @@ export function useQuizFlow(quizQuestions, recordAttempt) {
     setResult(null);
   };
 
-  return { question, qi, answered, isLast, picked, result, submitting, pick, next };
+  return { question, qi, total, answered, isLast, picked, result, submitting, pick, next };
 }
