@@ -40,6 +40,15 @@ export function ProfileScreen() {
     if (!error) refreshSubjects();
   };
 
+  // Deletes the subject and its notions/course history (cascade); future
+  // plan_days are purged too so the schedule rebuilds around the remaining
+  // subjects (see delete_subject).
+  const deleteSubject = async (subjectId, label) => {
+    if (!window.confirm(`Supprimer « ${label} » ? Votre progression sur ce sujet sera perdue.`)) return;
+    const { error } = await supabase.rpc("delete_subject", { p_subject_id: subjectId });
+    if (!error) refreshSubjects();
+  };
+
   const activeDays = profile.active_days ?? [0, 1, 2, 3, 4, 5, 6];
   const daysLabel =
     activeDays.length === 7 ? "Tous les jours" : DAY_NAMES.filter((d) => activeDays.includes(d.dow)).map((d) => d.label).join(", ");
@@ -94,7 +103,16 @@ export function ProfileScreen() {
                 <li key={s.id} className="profile-subject">
                   <div className="profile-subject__row">
                     <span>{s.label}</span>
-                    <span className="profile-subject__pct">{pct} %</span>
+                    <span className="profile-subject__row-right">
+                      <span className="profile-subject__pct">{pct} %</span>
+                      <button
+                        className="profile-subject__delete"
+                        onClick={() => deleteSubject(s.id, s.label)}
+                        aria-label={`Supprimer ${s.label}`}
+                      >
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </span>
                   </div>
                   <div className="profile-subject__track">
                     <div
