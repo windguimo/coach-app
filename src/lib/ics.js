@@ -1,7 +1,9 @@
 // Builds an .ics (iCalendar, RFC 5545) file from upcoming plan days so users
-// can import their Coach schedule into Google/Apple/Outlook calendar and get
+// can import their schedule into Google/Apple/Outlook calendar and get
 // native reminders — more reliable than web push (works offline, no iOS
 // PWA-install requirement).
+
+import { APP_NAME } from "../data/content";
 
 const DEFAULT_HOUR = 8; // floating local time — interpreted in the importing calendar's own timezone
 
@@ -50,12 +52,12 @@ export function buildPlanningIcs(days) {
         `DTSTAMP:${toIcsDateTime(now)}`,
         `DTSTART:${toIcsDateTime(start)}`,
         `DTEND:${toIcsDateTime(end)}`,
-        `SUMMARY:${escapeText(`${subjectLabel} — Séance Coach`)}`,
-        `DESCRIPTION:${escapeText(`${d.minutes} min avec Coach`)}`,
+        `SUMMARY:${escapeText(`${subjectLabel} — Séance ${APP_NAME}`)}`,
+        `DESCRIPTION:${escapeText(`${d.minutes} min avec ${APP_NAME}`)}`,
         "BEGIN:VALARM",
         "TRIGGER:-PT10M",
         "ACTION:DISPLAY",
-        "DESCRIPTION:Rappel séance Coach",
+        `DESCRIPTION:${escapeText(`Rappel séance ${APP_NAME}`)}`,
         "END:VALARM",
         "END:VEVENT",
       ];
@@ -67,7 +69,7 @@ export function buildPlanningIcs(days) {
   const doc = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Coach//FR",
+    `PRODID:-//${APP_NAME}//FR`,
     "CALSCALE:GREGORIAN",
     ...events,
     "END:VCALENDAR",

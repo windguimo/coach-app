@@ -30,15 +30,48 @@ src/
     mastery.js           # calculs de progression côté client
     push.js               # abonnement Web Push (rappels quotidiens)
     ics.js                 # export .ics des séances à venir
+    installPrompt.js        # détection plateforme/standalone, état PWA
+    analytics.js              # log d'événements (voir app_events)
+  sw.js                   # source du service worker (voir section PWA)
 
 supabase/
   migrations/            # schéma SQL, cumulatif, à appliquer dans l'ordre
-                          # (0001…0008 à ce jour — voir chaque fichier pour
+                          # (0001…0011 à ce jour — voir chaque fichier pour
                           # ce qu'il ajoute, pas de renumérotation a posteriori)
   functions/
     generate-session/    # Edge Function : génère (ou réutilise) un module de cours
     send-reminders/       # Edge Function : rappel push quotidien (cron)
 ```
+
+## PWA (manifest, service worker, installation)
+
+- Nom de l'app centralisé dans `APP_NAME`/`APP_SHORT_NAME`
+  (`src/data/content.js`) — piloté à la fois vers l'UI et vers le manifest
+  (`vite.config.js` les importe). Changer le nom là, nulle part ailleurs.
+- Manifest généré au build par `vite-plugin-pwa` (pas de fichier manifest
+  écrit à la main) — voir l'option `manifest` de `VitePWA(...)` dans
+  `vite.config.js`. `start_url`/`scope` sont volontairement relatifs
+  (`./?source=pwa`, `./`) : le déploiement est sur un sous-chemin GitHub
+  Pages avec `HashRouter`, un chemin absolu casserait l'installation.
+- Service worker en mode `injectManifest` : `src/sw.js` est la source
+  (handlers push/notificationclick + fallback offline), le build y injecte
+  le precache de la coquille de l'app (JS/CSS hashés, jamais les requêtes
+  Supabase) via `workbox-precaching`. Le fichier servi (`sw.js` à la racine
+  du site) est généré — ne pas éditer `dist/sw.js` à la main, toujours
+  passer par `src/sw.js`.
+- Icônes provisoires (initiale sur fond uni) dans `public/icons/` —
+  générées par capture d'écran d'un HTML minimal, pas dessinées à la main ;
+  à remplacer telles quelles au rebranding.
+- `useInstallPrompt` (src/hooks/) décide, une fois par montage, si la
+  bannière d'installation doit s'afficher (première séance faite via
+  `profile.streak_days`, pas déjà standalone, budget anti-fatigue —
+  3 refus max espacés de 3 jours, stocké en `localStorage` car c'est une
+  préférence par appareil, pas par compte) puis fige la décision : ne pas
+  la re-dériver à chaque render, `shouldShowInstallPrompt()` bascule à
+  "non" dès qu'elle est enregistrée comme affichée.
+- `app_events` (migration 0011) journalise le funnel d'installation +
+  permissions push (`src/lib/analytics.js`, insert fire-and-forget,
+  `user_id` par défaut `auth.uid()`).
 
 ## Déploiement — piège à connaître
 
@@ -46,12 +79,19 @@ Seul le **frontend** (GitHub Pages) se redéploie automatiquement au push sur
 `main`. Les deux morceaux backend sont **manuels** et il faut toujours penser
 aux deux après avoir touché au schéma ou à une Edge Function :
 
-- **Migrations SQL** : coller le contenu du nouveau fichier dans le SQL
-  Editor du dashboard Supabase et l'exécuter (pas de CLI/CI branché).
+- **Migrations SQL** : si une session Claude a l'outil MCP Supabase connecté
+  (`mcp__Supabase__apply_migration`, projet `xrmjhsgeipshejfwdklh`), l'utiliser
+  directement — plus fiable que le copier-coller. Sinon (ou pour un humain),
+  coller le contenu du nouveau fichier dans le SQL Editor du dashboard
+  Supabase et l'exécuter. Les migrations 0001-0010 ont été appliquées à la
+  main donc n'apparaissent pas dans `list_migrations` — seules celles passées
+  par `apply_migration` (0011 et suivantes) y sont trackées ; ça n'a pas
+  d'incidence, juste une explication si le tracking semble incomplet.
 - **Edge Functions** (`generate-session`, `send-reminders`) : redéployer avec
   `npx supabase functions deploy <nom-de-la-fonction>` depuis la racine du
   repo (après `npx supabase login` puis `npx supabase link --project-ref
-  xrmjhsgeipshejfwdklh`, une fois par machine).
+  xrmjhsgeipshejfwdklh`, une fois par machine). Pas d'équivalent MCP fiable
+  observé pour ça dans cette session — CLI toujours nécessaire.
 
 Oublier l'un des deux après un changement de schéma produit des erreurs
 trompeuses : une fonction pas redéployée qui référence une colonne/relation
@@ -61,6 +101,12 @@ le vrai problème est juste que le code déployé est resté en retard sur la
 base. Si ce genre d'erreur apparaît après une migration qui touchait des
 tables lues par une Edge Function, vérifier en premier si cette fonction a
 bien été redéployée depuis.
+
+**Le projet Supabase `windguimo's Project` n'est pas dédié à coach-app** :
+`list_tables` y montre aussi `companies`/`documents`/`analyses`, un schéma
+sans rapport (analyse de dossiers d'entreprise) — vraisemblablement un autre
+projet partageant le même compte/projet Supabase. Ne pas y toucher, et ne
+pas s'étonner de les voir dans un `list_tables`.
 
 ## Modèle de données (points clés)
 

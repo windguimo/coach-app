@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { Heatmap, LevelRing, MasteryList, MilestoneChips } from "../components/ProgressWidgets";
 import { ReminderBanner } from "../components/ReminderBanner";
+import { InstallPrompt } from "../components/InstallPrompt";
 import { SubjectBadge } from "../components/SubjectBadge";
 import "../components/SubjectBadge.css";
 import { useIsDesktop } from "../hooks/useIsDesktop";
@@ -128,6 +129,7 @@ function TodayDesktop({ profile, subjects, notions, days, today, cells, mileston
         <SessionCards today={today} minutes={profile.daily_minutes} />
 
         <ReminderBanner />
+        <InstallPrompt />
 
         <div className="today-desktop__week-header">
           <div className="section-label">Vos 7 prochains jours</div>
@@ -230,6 +232,7 @@ function TodayMobile({ profile, subjects, notions, today }) {
       <SessionCards today={today} minutes={profile.daily_minutes} mobile />
 
       <ReminderBanner />
+      <InstallPrompt />
 
       <div className="stat-cards">
         <div className="stat-card">

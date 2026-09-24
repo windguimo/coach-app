@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { authRedirectTo, supabase } from "../lib/supabaseClient";
+import { APP_NAME } from "../data/content";
 import "./AuthScreen.css";
 
 export function AuthScreen() {
@@ -70,7 +71,7 @@ export function AuthScreen() {
           <span className="auth-brand__mark">
             <Icon name="compass" size={16} />
           </span>
-          <span className="auth-brand__name">Coach</span>
+          <span className="auth-brand__name">{APP_NAME}</span>
         </div>
 
         <h1 className="auth-title">{titles[mode][0]}</h1>

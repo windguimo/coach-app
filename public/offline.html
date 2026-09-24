@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hors connexion</title>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #ffffff;
+        color: #17181a;
+      }
+      .wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+      .mark {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #c6f04a;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 22px;
+        margin-bottom: 20px;
+      }
+      h1 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
+      p { font-size: 13.5px; color: rgba(23, 24, 26, 0.62); margin: 0; max-width: 280px; line-height: 1.5; }
+      button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        border-radius: 999px;
+        border: none;
+        background: #c6f04a;
+        color: #17181a;
+        font: 500 13.5px/1 -apple-system, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="mark">C</div>
+      <h1>Pas de connexion</h1>
+      <p>Cette page a besoin d'internet pour charger votre séance. Reconnectez-vous et réessayez.</p>
+      <button onclick="location.reload()">Réessayer</button>
+    </div>
+  </body>
+</html>

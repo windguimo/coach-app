@@ -2,6 +2,13 @@
 // content, quiz, progress) now comes from Supabase (see src/hooks/) and, for
 // course/quiz content, the generate-session Edge Function backed by Claude.
 
+// Single source of truth for the app's name — placeholder pending the
+// rebrand. Drives every "Coach" mention in the UI (Sidebar, AuthScreen,
+// SessionLoading, the .ics export…) AND the PWA manifest (see
+// vite.config.js, which imports these). Change it here only.
+export const APP_NAME = "Coach";
+export const APP_SHORT_NAME = "Coach";
+
 export const ONBOARDING_TOPICS = [
   "Négociation commerciale",
   "Prise de parole",
