@@ -414,10 +414,46 @@
   }
 
   .admin-kpis {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-kpis--flush .admin-kpi__value {
+    font-size: 19px;
   }
 
   .admin-kpi__value {
     font-size: 24px;
   }
+}
+
+/* ── LLM costs ── */
+
+.admin-kpis--flush {
+  margin-top: 0;
+}
+
+.admin-grid--inner {
+  margin-top: 18px;
+  gap: 28px;
+}
+
+.admin-cache {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.admin-note code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* Grid children default to min-width: auto — a wide table inside would
+   stretch the whole page on mobile instead of scrolling in its wrapper. */
+.admin-grid > * {
+  min-width: 0;
 }

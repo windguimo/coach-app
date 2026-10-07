@@ -17,6 +17,10 @@ const PERIODS = [
 ];
 
 const nf = new Intl.NumberFormat("fr-FR");
+const usd = (n, digits = 2) =>
+  n == null ? "—" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n);
+// Small amounts (a few cents per call) need more precision to be readable.
+const usdSmart = (n) => (n == null ? "—" : usd(n, Math.abs(n) < 1 ? 4 : 2));
 const fmt = (n) => (n == null ? "—" : nf.format(n));
 const pct = (n) => (n == null ? "—" : `${n} %`);
 
@@ -172,6 +176,8 @@ export function AdminScreen() {
             <Mini label="Génération d'une séance" value={k.avg_generation_ms ? duration(k.avg_generation_ms / 1000) : "—"} />
           </section>
 
+          {data.llm && <LlmCosts llm={data.llm} kpis={k} days={data.days} />}
+
           <Card title="Jour par jour">
             <div className="admin-daily">
               <Columns title="Visiteurs" rows={data.daily} field="visitors" />
@@ -261,9 +267,9 @@ const dayLabel = (d, opts = { day: "numeric", month: "short" }) =>
 
 // One small single-series column chart per metric (small multiples, one
 // shared x, no dual axis). Each column is its own hover/focus target.
-function Columns({ title, rows, field }) {
+function Columns({ title, rows, field, format = fmt }) {
   const [hover, setHover] = useState(null);
-  const max = Math.max(1, ...rows.map((r) => r[field]));
+  const max = Math.max(0, ...rows.map((r) => r[field])) || 1;
   const total = rows.reduce((s, r) => s + r[field], 0);
   const shown = hover != null ? rows[hover] : null;
 
@@ -274,11 +280,11 @@ function Columns({ title, rows, field }) {
         <span className="admin-cols__readout">
           {shown ? (
             <>
-              <strong>{fmt(shown[field])}</strong> · {dayLabel(shown.day, { weekday: "short", day: "numeric", month: "short" })}
+              <strong>{format(shown[field])}</strong> · {dayLabel(shown.day, { weekday: "short", day: "numeric", month: "short" })}
             </>
           ) : (
             <>
-              <strong>{fmt(total)}</strong> au total
+              <strong>{format(total)}</strong> au total
             </>
           )}
         </span>
@@ -396,16 +402,16 @@ function Abandonment({ a }) {
   );
 }
 
-function BarList({ rows, label, empty }) {
+function BarList({ rows, label, empty, format = fmt }) {
   if (!rows.length) return <p className="admin-muted">{empty}</p>;
-  const max = Math.max(1, ...rows.map((r) => r.count));
+  const max = Math.max(0, ...rows.map((r) => r.count)) || 1;
   return (
     <ul className="admin-barlist">
       {rows.map((r, i) => (
         <li key={i}>
           <div className="admin-funnel__line">
             <span className="admin-barlist__label">{label(r)}</span>
-            <strong>{fmt(r.count)}</strong>
+            <strong>{format(r.count)}</strong>
           </div>
           <div className="admin-track admin-track--thin">
             <div className="admin-track__fill" style={{ width: `${(r.count / max) * 100}%` }} />
@@ -478,5 +484,112 @@ function Feed({ events }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+const FUNCTION_LABELS = { "generate-session": "Séances (cours + quiz)", "demo-lesson": "Démo de la page d'accueil" };
+
+// Claude spend, from llm_usage (migration 0014): every Anthropic call is
+// logged with its token counts; cost is computed from llm_prices.
+function LlmCosts({ llm, kpis, days }) {
+  const perDay = llm.total_usd / days;
+  const per = (n) => (n ? llm.total_usd / n : null);
+  const c = llm.cache;
+  const moduleHit = c.modules_served ? Math.round(100 * (1 - c.modules_generated / c.modules_served)) : null;
+  const demoHit = c.demos_shown ? Math.max(0, Math.round(100 * (1 - c.demos_generated / c.demos_shown))) : null;
+  const price = llm.prices[0];
+
+  return (
+    <Card
+      title="Coûts IA (Claude)"
+      subtitle={
+        llm.tracking_since
+          ? `Mesuré depuis le ${new Date(llm.tracking_since).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — les appels antérieurs n'étaient pas enregistrés`
+          : "Aucun appel enregistré pour l'instant — le suivi démarre au prochain appel à Claude"
+      }
+    >
+      <div className="admin-kpis admin-kpis--flush">
+        <Kpi label="Dépensé sur la période" value={usdSmart(llm.total_usd)} hint={`${fmt(llm.calls)} appels · ${fmt(llm.failed_calls)} en échec`} />
+        <Kpi label="Projection sur 30 jours" value={usdSmart(perDay * 30)} hint="au rythme de la période" />
+        <Kpi label="Par utilisateur actif" value={usdSmart(per(kpis.active_users))} hint={`${fmt(kpis.active_users)} actifs`} />
+        <Kpi label="Par inscription" value={usdSmart(per(kpis.signups))} hint={`${fmt(kpis.signups)} inscrits`} />
+        <Kpi label="Depuis le début" value={usdSmart(llm.all_time_usd)} hint={`${fmt(llm.input_tokens)} tokens lus · ${fmt(llm.output_tokens)} écrits (période)`} />
+      </div>
+
+      <div className="admin-grid admin-grid--inner">
+        <div>
+          <p className="admin-card__subtitle">Par usage</p>
+          {llm.by_function.length ? (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Usage</th>
+                    <th>Appels</th>
+                    <th>Coût</th>
+                    <th>Par appel</th>
+                    <th>Tokens (lus / écrits)</th>
+                    <th>Durée</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {llm.by_function.map((f) => (
+                    <tr key={f.function}>
+                      <td>{FUNCTION_LABELS[f.function] ?? f.function}</td>
+                      <td>
+                        {fmt(f.calls)}
+                        {f.failed > 0 && <span className="admin-muted"> ({f.failed} échecs)</span>}
+                      </td>
+                      <td>{usdSmart(f.cost_usd)}</td>
+                      <td>{usdSmart(f.avg_cost_usd)}</td>
+                      <td>
+                        {fmt(f.avg_input_tokens)} / {fmt(f.avg_output_tokens)}
+                      </td>
+                      <td>{f.avg_ms ? duration(f.avg_ms / 1000) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="admin-muted">Aucun appel sur la période.</p>
+          )}
+
+          <p className="admin-card__subtitle" style={{ marginTop: 18 }}>
+            Économies du cache partagé
+          </p>
+          <ul className="admin-cache">
+            <li>
+              <strong>{fmt(c.modules_served)}</strong> séances servies pour <strong>{fmt(c.modules_generated)}</strong> générées
+              {moduleHit != null && <span className="admin-muted"> · {moduleHit} % gratuites</span>}
+            </li>
+            <li>
+              <strong>{fmt(c.demos_shown)}</strong> démos affichées pour <strong>{fmt(c.demos_generated)}</strong> générées
+              {demoHit != null && <span className="admin-muted"> · {demoHit} % gratuites</span>}
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <Columns title="Coût par jour" rows={llm.daily} field="cost_usd" format={usdSmart} />
+          <p className="admin-card__subtitle" style={{ marginTop: 18 }}>
+            Sujets les plus coûteux
+          </p>
+          <BarList
+            rows={llm.top_topics.map((t) => ({ ...t, count: t.cost_usd }))}
+            label={(r) => `${r.topic} (${r.calls} appel${r.calls > 1 ? "s" : ""})`}
+            format={usdSmart}
+            empty="Aucun appel sur la période."
+          />
+        </div>
+      </div>
+
+      {price && (
+        <p className="admin-muted admin-note">
+          Tarif appliqué ({price.model}) : {usd(price.input_per_mtok)} / million de tokens lus, {usd(price.output_per_mtok)} / million
+          écrits. Modifiable dans la table <code>llm_prices</code>.
+        </p>
+      )}
+    </Card>
   );
 }

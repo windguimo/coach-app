@@ -40,7 +40,7 @@ src/
 
 supabase/
   migrations/            # schéma SQL, cumulatif, à appliquer dans l'ordre
-                          # (0001…0013 à ce jour — voir chaque fichier pour
+                          # (0001…0014 à ce jour — voir chaque fichier pour
                           # ce qu'il ajoute, pas de renumérotation a posteriori)
   functions/
     generate-session/    # Edge Function : génère (ou réutilise) un module de cours
@@ -199,6 +199,20 @@ migration). **Pour analyser les stats avec l'utilisateur**, interroger
 directement via MCP : `select public.analytics_dashboard(30)` (non exposée
 aux clients, accessible en SQL), ou `app_events` en SQL libre pour des
 questions plus fines.
+
+## Coûts LLM
+
+Chaque appel Anthropic (`generate-session`, `demo-lesson`) écrit une ligne
+dans `llm_usage` (migration 0014) : tokens lus/écrits/cache issus du
+`usage` de l'API, durée, succès. `cost_usd` est calculé **à l'insertion**
+par un trigger depuis `llm_prices` (USD / million de tokens) : un
+changement de tarif = un `update llm_prices`, sans redéploiement, et les
+lignes passées gardent le prix payé. **Si une nouvelle fonction appelle
+Claude ou si le modèle change**, y ajouter le même log et insérer la ligne
+de prix du modèle (sinon coût = 0). Agrégats : `llm_costs(days)` (SQL
+seulement), fusionné dans `admin_dashboard` sous la clé `llm` (section
+« Coûts IA » du dashboard). Les appels antérieurs au 7 oct. 2026 ne sont
+pas mesurés. Ordre de grandeur constaté : une démo ≈ 0,008 $.
 
 ## Flux de génération de session
 
