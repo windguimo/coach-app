@@ -89,7 +89,7 @@ export function SessionScreen() {
   return isDesktop ? (
     <SessionDesktop courseModule={data.course_module} quiz={quiz} onFinish={finish} />
   ) : (
-    <SessionMobile quiz={quiz} onFinish={finish} />
+    <SessionMobile courseModule={data.course_module} quiz={quiz} onFinish={finish} />
   );
 }
 
@@ -191,7 +191,34 @@ function SessionDesktop({ courseModule, quiz, onFinish }) {
 
 // ───────────────────────── Mobile ─────────────────────────
 
-function SessionMobile({ quiz, onFinish }) {
+// Mobile has no room for the course and the quiz side by side (desktop's
+// layout), so a session is two steps: read the course, then the quiz —
+// with a way back to the course from any question.
+function SessionMobile({ courseModule, quiz, onFinish }) {
+  const [phase, setPhase] = useState("course"); // "course" | "quiz"
+  const [openedAt] = useState(() => Date.now());
+  const [readLogged, setReadLogged] = useState(false);
+
+  const goTo = (next) => {
+    if (next === "quiz" && !readLogged) {
+      track("lesson_read", { module_id: courseModule.id, secs: Math.round((Date.now() - openedAt) / 1000) });
+      setReadLogged(true);
+    }
+    setPhase(next);
+    window.scrollTo(0, 0);
+  };
+
+  if (phase === "course") {
+    return (
+      <SessionMobileCourse
+        courseModule={courseModule}
+        total={quiz.total}
+        resuming={readLogged}
+        onStart={() => goTo("quiz")}
+      />
+    );
+  }
+
   if (!quiz.question) {
     return (
       <div className="session-empty">
@@ -207,10 +234,14 @@ function SessionMobile({ quiz, onFinish }) {
           <Icon name="x" size={19} style={{ color: "var(--ink-45)" }} />
         </Link>
         <div className="step-bar step-bar--mobile">
+          <div className="step-bar__seg step-bar__seg--on" />
           {Array.from({ length: quiz.total }).map((_, i) => (
             <div key={i} className={`step-bar__seg step-bar__seg--${quiz.qi >= i ? "on" : "off"}`} />
           ))}
         </div>
+        <button className="session-mobile__back-to-course" onClick={() => goTo("course")}>
+          Revoir le cours
+        </button>
       </div>
 
       <div className="session-mobile__prompt-block">
@@ -255,6 +286,52 @@ function SessionMobile({ quiz, onFinish }) {
       ) : (
         <div className="session-mobile__footer quiz-hint">Touchez une réponse.</div>
       )}
+    </div>
+  );
+}
+
+function SessionMobileCourse({ courseModule, total, resuming, onStart }) {
+  return (
+    <div className="session-mobile">
+      <div className="session-mobile__header">
+        <Link to="/today" aria-label="Fermer">
+          <Icon name="x" size={19} style={{ color: "var(--ink-45)" }} />
+        </Link>
+        <div className="step-bar step-bar--mobile">
+          <div className="step-bar__seg step-bar__seg--on" />
+          {Array.from({ length: total }).map((_, i) => (
+            <div key={i} className="step-bar__seg step-bar__seg--off" />
+          ))}
+        </div>
+      </div>
+
+      <article className="course-content session-mobile__course">
+        <div className="course-content__eyebrow">
+          <span className="accent-tick" />
+          <div className="eyebrow">{courseModule.eyebrow}</div>
+        </div>
+        <h2 className="course-content__title">{courseModule.title}</h2>
+        {courseModule.paragraphs.map((p, i) => (
+          <p className="course-content__p" key={i}>
+            {p}
+          </p>
+        ))}
+        <div className="course-content__takeaway">
+          <div className="eyebrow" style={{ color: "var(--ink-5)" }}>
+            À retenir
+          </div>
+          <div className="course-content__takeaway-text">{courseModule.takeaway}</div>
+        </div>
+      </article>
+
+      <div className="session-mobile__spacer" />
+
+      <div className="session-mobile__footer session-mobile__footer--sticky">
+        <button onClick={onStart} className="btn-accent" style={{ width: "100%", height: 46 }}>
+          {resuming ? "Reprendre le quiz" : total > 0 ? `Passer au quiz · ${total} question${total > 1 ? "s" : ""}` : "Terminer"}
+          <Icon name="arrow-right" size={15} />
+        </button>
+      </div>
     </div>
   );
 }

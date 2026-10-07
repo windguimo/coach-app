@@ -185,7 +185,8 @@ site d'origine), `heartbeat`, `demo_started/completed/refused/error/
 answered`, `signup_cta_clicked`, `signup_completed`, `login_completed`,
 `auth_error`, `onboarding_completed/error`, `session_ready` (temps de
 génération), `session_error`, `session_started/answer/completed`
-(`props.module_id` relie une séance), `revision_answer`, + les
+(`props.module_id` relie une séance), `lesson_read` (mobile : temps passé
+sur le cours avant le quiz), `revision_answer`, + les
 événements PWA/push existants. En ajouter un : appeler `track()` puis, si
 le dashboard doit l'afficher, l'ajouter à `analytics_dashboard()` dans une
 **nouvelle** migration et à `EVENT_LABELS` dans `AdminScreen.jsx`.
