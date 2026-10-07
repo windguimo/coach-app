@@ -152,6 +152,21 @@ côté client. Si tu touches au schéma de contenu, vérifie cette requête —
 c'est le seul autre endroit (avec `generate-session`) qui lit
 `content_library_questions`.
 
+## Auth : e-mails de confirmation et liens de retour
+
+Confirmation d'e-mail activée : `signUp` ne renvoie pas de session, l'écran
+d'inscription bascule alors sur « Vérifiez votre boîte mail » (avec renvoi
+du lien). Tous les liens d'e-mail passent `emailRedirectTo` /
+`redirectTo` = `authRedirectTo(...)` (`https://windguimo.github.io/coach-app/#/…`).
+**Côté Supabase (dashboard, pas de MCP pour ça)** : Authentication → URL
+Configuration → Site URL = `https://windguimo.github.io/coach-app/` et
+Redirect URLs contenant `https://windguimo.github.io/coach-app/**` — sinon
+Supabase ignore le redirect et renvoie vers le Site URL (il pointait sur
+`https://windguimo.github.io/`, d'où une 404). Le retour de lien est lu
+par `src/lib/authReturn.js` (`?code=` PKCE, ou `error_code` en query/hash) :
+si l'échange échoue (lien ouvert dans un autre navigateur, lien expiré),
+l'écran de connexion affiche un message adapté au lieu d'une page vide.
+
 ## Landing publique + démo live
 
 "/" affiche `LandingScreen` à tout visiteur déconnecté, y compris dans la PWA
