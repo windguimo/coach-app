@@ -79,7 +79,7 @@ export function RevisionsScreen() {
           {quiz.answered && (
             <div className="revisions-card__footer">
               <div className="quiz-footer-line">
-                <span>+{quiz.result?.xp_awarded ?? 0} XP</span>
+                {quiz.result ? <span className="xp-pop">+{quiz.result.xp_awarded} XP</span> : <span>…</span>}
                 <span>Série : {quiz.result?.streak_days ?? "—"} jours</span>
               </div>
               <button onClick={quiz.next} className="btn-accent" style={{ width: "100%" }}>
