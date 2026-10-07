@@ -4,10 +4,14 @@
 
 // Single source of truth for the app's name — placeholder pending the
 // rebrand. Drives every "Coach" mention in the UI (Sidebar, AuthScreen,
-// SessionLoading, the .ics export…) AND the PWA manifest (see
-// vite.config.js, which imports these). Change it here only.
+// SessionLoading, the .ics export…), the PWA manifest, and index.html's
+// title/Open Graph tags (see vite.config.js, which imports these and
+// injects them into index.html via the %APP_NAME%/%APP_TAGLINE%
+// placeholders — the HTML file itself has no literal "Coach" left).
+// Change it here only.
 export const APP_NAME = "Coach";
 export const APP_SHORT_NAME = "Coach";
+export const APP_TAGLINE = "15 minutes par jour pour progresser";
 
 export const ONBOARDING_TOPICS = [
   "Négociation commerciale",
