@@ -3,7 +3,9 @@ import { useState } from "react";
 // Drives a linear list of quiz questions (pick → server-scored result → next),
 // shared between SessionScreen (a freshly generated module) and
 // RevisionsScreen (a queue of previously generated questions).
-export function useQuizFlow(quizQuestions, recordAttempt) {
+// onAnswered (optional) is called after each server-scored answer — used
+// for analytics.
+export function useQuizFlow(quizQuestions, recordAttempt, onAnswered) {
   const [qi, setQi] = useState(0);
   const [picked, setPicked] = useState(null);
   const [result, setResult] = useState(null); // { correct, xp_awarded, xp_total, streak_days }
@@ -23,6 +25,7 @@ export function useQuizFlow(quizQuestions, recordAttempt) {
       const r = await recordAttempt(question.id, i);
       setResult(r);
       setResults((prev) => [...prev, r]);
+      onAnswered?.({ qi, total, correct: Boolean(r?.correct) });
     } finally {
       setSubmitting(false);
     }

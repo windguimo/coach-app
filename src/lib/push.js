@@ -1,6 +1,5 @@
 import { supabase } from "./supabaseClient";
 import { logEvent } from "./analytics";
-import { platform } from "./installPrompt";
 
 // Public VAPID key — safe to ship in client code (it's how the browser
 // verifies pushes come from our server, not a secret by itself). The
@@ -26,7 +25,7 @@ export async function subscribeToPush() {
   if (!pushSupported()) throw new Error("Les notifications ne sont pas supportées sur ce navigateur.");
 
   const permission = await Notification.requestPermission();
-  logEvent(permission === "granted" ? "push_permission_granted" : "push_permission_denied", platform());
+  logEvent(permission === "granted" ? "push_permission_granted" : "push_permission_denied");
   if (permission !== "granted") throw new Error("Permission refusée.");
 
   const registration = await navigator.serviceWorker.register("sw.js");

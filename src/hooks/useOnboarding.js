@@ -5,6 +5,7 @@ import { ONBOARDING_PACES, ONBOARDING_TOPICS } from "../data/content";
 import { useSubjects } from "./useSubjects";
 import { useProfile } from "./useProfile";
 import { takePendingTopic } from "../lib/pendingTopic";
+import { track } from "../lib/analytics";
 
 // French label, Postgres dow (0=Sun..6=Sat) — Mon..Sun display order.
 const DAYS = [
@@ -34,6 +35,7 @@ export function useOnboarding() {
   const { subjects: existingSubjects, loading: subjectsLoading } = useSubjects();
   const { profile, loading: profileLoading } = useProfile();
   const seeded = useRef(false);
+  const demoTopic = useRef(null);
 
   useEffect(() => {
     if (seeded.current || subjectsLoading || profileLoading || !profile) return;
@@ -41,6 +43,7 @@ export function useOnboarding() {
     const labels = existingSubjects.map((s) => s.label);
     // Subject tried in the landing-page demo before signing up.
     const pending = takePendingTopic();
+    demoTopic.current = pending;
     if (pending) {
       const known = [...ONBOARDING_TOPICS, ...labels].find((l) => l.toLowerCase() === pending.toLowerCase());
       if (!known) labels.push(pending);
@@ -135,8 +138,16 @@ export function useOnboarding() {
     setSubmitting(false);
     if (err) {
       setError(err.message);
+      track("onboarding_error", { message: String(err.message).slice(0, 120) });
       return;
     }
+    track("onboarding_completed", {
+      subjects: selected.slice(0, 12),
+      minutes,
+      days: activeDays.length,
+      first_time: existingSubjects.length === 0,
+      demo_topic: demoTopic.current,
+    });
     navigate("/today");
   };
 

@@ -2,6 +2,7 @@ import { Icon } from "../components/Icon";
 import { QuizOptions } from "../components/QuizOptions";
 import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useQuizFlow } from "../hooks/useQuizFlow";
+import { track } from "../lib/analytics";
 import { supabase } from "../lib/supabaseClient";
 import "./SessionScreen.css";
 import "./RevisionsScreen.css";
@@ -14,7 +15,7 @@ async function recordAttempt(questionId, picked) {
 
 export function RevisionsScreen() {
   const { questions, loading, error, refresh } = useReviewQueue();
-  const quiz = useQuizFlow(questions, recordAttempt);
+  const quiz = useQuizFlow(questions, recordAttempt, (answer) => track("revision_answer", answer));
 
   if (loading) return <div className="today-loading">Chargement…</div>;
 

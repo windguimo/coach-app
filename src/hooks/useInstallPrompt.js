@@ -3,7 +3,6 @@ import { useProfile } from "./useProfile";
 import {
   isIOS,
   isStandalone,
-  platform,
   getDeferredPrompt,
   clearDeferredPrompt,
   shouldShowInstallPrompt,
@@ -26,7 +25,7 @@ export function useInstallPrompt() {
   useEffect(() => {
     const onBip = () => setHasNativePrompt(true);
     const onInstalled = () => {
-      logEvent("app_installed", platform());
+      logEvent("app_installed");
       setHasNativePrompt(false);
       setVisible(false);
     };
@@ -47,12 +46,12 @@ export function useInstallPrompt() {
     if (firstSessionDone && !isStandalone() && canOfferSomething && shouldShowInstallPrompt()) {
       setVisible(true);
       recordInstallPromptShown();
-      logEvent("install_prompt_shown", platform());
+      logEvent("install_prompt_shown");
     }
   }, [decided, loading, profile, hasNativePrompt]);
 
   const dismiss = () => {
-    logEvent("install_prompt_dismissed", platform());
+    logEvent("install_prompt_dismissed");
     setVisible(false);
   };
 
@@ -61,7 +60,7 @@ export function useInstallPrompt() {
     if (!deferred) return;
     deferred.prompt();
     const choice = await deferred.userChoice;
-    logEvent(choice.outcome === "accepted" ? "install_prompt_accepted" : "install_prompt_dismissed", platform());
+    logEvent(choice.outcome === "accepted" ? "install_prompt_accepted" : "install_prompt_dismissed");
     clearDeferredPrompt();
     setVisible(false);
   };

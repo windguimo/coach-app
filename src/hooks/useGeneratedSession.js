@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { track } from "../lib/analytics";
 
 // Calls the generate-session Edge Function (Claude generates + caches a
 // course module + 2 quiz questions for the subject) and exposes it plus a
@@ -13,14 +14,22 @@ export function useGeneratedSession(subjectId) {
     if (!subjectId) return;
     setLoading(true);
     setError(null);
+    const startedAt = Date.now();
     const { data: result, error: err } = await supabase.functions.invoke("generate-session", {
       body: { subject_id: subjectId },
     });
     if (err) {
+      track("session_error", { subject_id: subjectId, message: String(err.message ?? err).slice(0, 120) });
       setError(err.message ?? String(err));
       setLoading(false);
       return;
     }
+    track("session_ready", {
+      subject_id: subjectId,
+      module_id: result?.course_module?.id ?? null,
+      module_index: result?.course_module?.module_index ?? null,
+      ms: Date.now() - startedAt,
+    });
     setData(result);
     setLoading(false);
   }, [subjectId]);
