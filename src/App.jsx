@@ -5,6 +5,7 @@ import { RequireAuth, useAuth } from "./lib/auth";
 import { isStandalone, platform } from "./lib/installPrompt";
 import { logEvent } from "./lib/analytics";
 import { AuthScreen } from "./screens/AuthScreen";
+import { LandingRoute } from "./screens/LandingScreen";
 import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { TodayScreen } from "./screens/TodayScreen";
 import { PlanningScreen } from "./screens/PlanningScreen";
@@ -25,7 +26,7 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/today" replace />} />
+      <Route path="/" element={<LandingRoute />} />
       <Route path="/login" element={<AuthScreen />} />
       <Route
         path="/reset-password"

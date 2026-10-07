@@ -7,6 +7,7 @@ export function useQuizFlow(quizQuestions, recordAttempt) {
   const [qi, setQi] = useState(0);
   const [picked, setPicked] = useState(null);
   const [result, setResult] = useState(null); // { correct, xp_awarded, xp_total, streak_days }
+  const [results, setResults] = useState([]); // every scored answer this session, for the end-of-session recap
   const [submitting, setSubmitting] = useState(false);
 
   const total = quizQuestions?.length ?? 0;
@@ -21,6 +22,7 @@ export function useQuizFlow(quizQuestions, recordAttempt) {
     try {
       const r = await recordAttempt(question.id, i);
       setResult(r);
+      setResults((prev) => [...prev, r]);
     } finally {
       setSubmitting(false);
     }
@@ -32,5 +34,9 @@ export function useQuizFlow(quizQuestions, recordAttempt) {
     setResult(null);
   };
 
-  return { question, qi, total, answered, isLast, picked, result, submitting, pick, next };
+  const sessionXp = results.reduce((sum, r) => sum + (r?.xp_awarded ?? 0), 0);
+  const correctCount = results.filter((r) => r?.correct).length;
+  const lastResult = results[results.length - 1] ?? null;
+
+  return { question, qi, total, answered, isLast, picked, result, submitting, pick, next, sessionXp, correctCount, lastResult };
 }

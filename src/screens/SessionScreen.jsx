@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { QuizOptions } from "../components/QuizOptions";
+import { SessionComplete } from "../components/SessionComplete";
 import { SessionLoading } from "../components/SessionLoading";
+import { useProfile } from "../hooks/useProfile";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useGeneratedSession } from "../hooks/useGeneratedSession";
 import { useQuizFlow } from "../hooks/useQuizFlow";
@@ -16,6 +19,15 @@ export function SessionScreen() {
   const quiz = useQuizFlow(data?.quiz_questions, recordAttempt);
   const { subjects } = useSubjects();
   const subjectLabel = subjects.find((s) => s.id === subjectId)?.label;
+  const [finished, setFinished] = useState(false);
+
+  // Streak as it was before this session's first scored answer, so the
+  // recap can tell whether today's session is what extended it.
+  const { profile } = useProfile();
+  const [streakBefore, setStreakBefore] = useState(null);
+  useEffect(() => {
+    if (profile && streakBefore === null) setStreakBefore(profile.streak_days);
+  }, [profile, streakBefore]);
 
   if (!subjectId) {
     return (
@@ -43,16 +55,22 @@ export function SessionScreen() {
     );
   }
 
+  if (finished) {
+    return <SessionComplete quiz={quiz} notionId={data.course_module.notion_id} streakBefore={streakBefore} />;
+  }
+
+  const finish = () => setFinished(true);
+
   return isDesktop ? (
-    <SessionDesktop courseModule={data.course_module} quiz={quiz} />
+    <SessionDesktop courseModule={data.course_module} quiz={quiz} onFinish={finish} />
   ) : (
-    <SessionMobile quiz={quiz} />
+    <SessionMobile quiz={quiz} onFinish={finish} />
   );
 }
 
 // ───────────────────────── Desktop ─────────────────────────
 
-function SessionDesktop({ courseModule, quiz }) {
+function SessionDesktop({ courseModule, quiz, onFinish }) {
   const navigate = useNavigate();
 
   return (
@@ -118,14 +136,14 @@ function SessionDesktop({ courseModule, quiz }) {
               {quiz.answered ? (
                 <div>
                   <div className="quiz-footer-line">
-                    <span>+{quiz.result?.xp_awarded ?? 0} XP</span>
+                    {quiz.result ? <span className="xp-pop">+{quiz.result.xp_awarded} XP</span> : <span>…</span>}
                     <span>Série : {quiz.result?.streak_days ?? "—"} jours</span>
                   </div>
                   {quiz.isLast ? (
-                    <Link to="/today" className="btn-accent" style={{ width: "100%" }}>
+                    <button onClick={onFinish} disabled={!quiz.result} className="btn-accent" style={{ width: "100%" }}>
                       Terminer la séance
                       <Icon name="arrow-right" size={15} />
-                    </Link>
+                    </button>
                   ) : (
                     <button onClick={quiz.next} className="btn-accent" style={{ width: "100%" }}>
                       Question suivante
@@ -148,7 +166,7 @@ function SessionDesktop({ courseModule, quiz }) {
 
 // ───────────────────────── Mobile ─────────────────────────
 
-function SessionMobile({ quiz }) {
+function SessionMobile({ quiz, onFinish }) {
   if (!quiz.question) {
     return (
       <div className="session-empty">
@@ -194,14 +212,14 @@ function SessionMobile({ quiz }) {
       {quiz.answered ? (
         <div className="session-mobile__footer">
           <div className="quiz-footer-line">
-            <span>+{quiz.result?.xp_awarded ?? 0} XP</span>
+            {quiz.result ? <span className="xp-pop">+{quiz.result.xp_awarded} XP</span> : <span>…</span>}
             <span>Série : {quiz.result?.streak_days ?? "—"} jours</span>
           </div>
           {quiz.isLast ? (
-            <Link to="/today" className="btn-accent" style={{ width: "100%", height: 46 }}>
+            <button onClick={onFinish} disabled={!quiz.result} className="btn-accent" style={{ width: "100%", height: 46 }}>
               Terminer la séance
               <Icon name="arrow-right" size={15} />
-            </Link>
+            </button>
           ) : (
             <button onClick={quiz.next} className="btn-accent" style={{ width: "100%", height: 46 }}>
               Question suivante

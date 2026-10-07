@@ -102,6 +102,84 @@
   color: var(--ink-4);
 }
 
+/* ── Feedback animations (shared by Session + Révisions) ── */
+
+.quiz-option--idle {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.quiz-option--idle:hover {
+  border-color: var(--ink-4);
+}
+
+.quiz-option--idle:active {
+  transform: scale(0.98);
+}
+
+.quiz-option--correct.quiz-option--picked {
+  animation: quiz-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Picked wrong: the right answer lights up a beat later, after the shake. */
+.quiz-option--correct:not(.quiz-option--picked) {
+  animation: quiz-reveal 0.5s ease 0.35s both;
+}
+
+.quiz-option--wrong {
+  animation: quiz-shake 0.4s ease;
+}
+
+.verdict-card {
+  animation: verdict-in 0.35s ease both;
+}
+
+.xp-pop {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--ink);
+  animation: xp-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes quiz-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes quiz-reveal {
+  from { background: var(--bg); border-color: var(--ink-16); }
+  to { background: var(--accent); border-color: var(--ink); }
+}
+
+@keyframes quiz-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes verdict-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes xp-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.6); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.15); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-option--correct.quiz-option--picked,
+  .quiz-option--correct:not(.quiz-option--picked),
+  .quiz-option--wrong,
+  .verdict-card,
+  .xp-pop {
+    animation: none;
+  }
+}
+
 .verdict-card {
   margin-top: 20px;
   padding: 16px;

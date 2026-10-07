@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { ONBOARDING_PACES, ONBOARDING_TOPICS } from "../data/content";
 import { useSubjects } from "./useSubjects";
 import { useProfile } from "./useProfile";
+import { takePendingTopic } from "../lib/pendingTopic";
 
 // French label, Postgres dow (0=Sun..6=Sat) — Mon..Sun display order.
 const DAYS = [
@@ -37,9 +38,17 @@ export function useOnboarding() {
   useEffect(() => {
     if (seeded.current || subjectsLoading || profileLoading || !profile) return;
     seeded.current = true;
-    if (existingSubjects.length > 0) {
-      setSelected(existingSubjects.map((s) => s.label));
-      setCustomTopics(existingSubjects.map((s) => s.label).filter((l) => !ONBOARDING_TOPICS.includes(l)));
+    const labels = existingSubjects.map((s) => s.label);
+    // Subject tried in the landing-page demo before signing up.
+    const pending = takePendingTopic();
+    if (pending) {
+      const known = [...ONBOARDING_TOPICS, ...labels].find((l) => l.toLowerCase() === pending.toLowerCase());
+      if (!known) labels.push(pending);
+      else if (!labels.includes(known)) labels.push(known);
+    }
+    if (labels.length > 0) {
+      setSelected(labels);
+      setCustomTopics(labels.filter((l) => !ONBOARDING_TOPICS.includes(l)));
     }
     if (profile.daily_minutes) setPace(`${profile.daily_minutes} min`);
     if (profile.active_days?.length) setActiveDays(profile.active_days);
