@@ -155,3 +155,25 @@
 .auth-switch:hover {
   color: var(--ink);
 }
+
+.auth-mail-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+}
+
+.auth-tips {
+  margin: 18px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-62);
+}

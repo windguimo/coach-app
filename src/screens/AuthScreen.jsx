@@ -4,20 +4,26 @@ import { Icon } from "../components/Icon";
 import { authRedirectTo, supabase } from "../lib/supabaseClient";
 import { APP_NAME } from "../data/content";
 import { track } from "../lib/analytics";
+import { authReturn, consumeAuthReturnMessage } from "../lib/authReturn";
 import "./AuthScreen.css";
 
 export function AuthScreen() {
   const location = useLocation();
   // The landing page sends visitors here with state.mode = "signup".
-  const [mode, setMode] = useState(location.state?.mode === "signup" ? "signup" : "login"); // 'login' | 'signup' | 'forgot'
+  const [mode, setMode] = useState(location.state?.mode === "signup" ? "signup" : "login"); // 'login' | 'signup' | 'forgot' | 'check'
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [error, setError] = useState(null);
-  const [info, setInfo] = useState(null);
+  // Back from an email link without a session: say what happened, once.
+  const [returnMsg] = useState(consumeAuthReturnMessage);
+  const [error, setError] = useState(returnMsg?.type === "error" ? returnMsg.text : null);
+  const [info, setInfo] = useState(returnMsg?.type === "info" ? returnMsg.text : null);
   const [busy, setBusy] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false); // login refused: email not confirmed yet
+  const [resend, setResend] = useState("idle"); // idle | sending | sent | error
   const navigate = useNavigate();
-  const from = location.state?.from?.pathname || "/today";
+  // Just confirmed by email (in another browser): next stop is onboarding.
+  const from = location.state?.from?.pathname || (authReturn?.kind === "code" && !authReturn.reset ? "/onboarding" : "/today");
 
   const submit = async (e) => {
     e.preventDefault();
@@ -33,23 +39,34 @@ export function AuthScreen() {
         track("password_reset_requested");
         setInfo("Email envoyé — cliquez sur le lien qu'il contient pour choisir un nouveau mot de passe.");
       } else if (mode === "signup") {
-        const { error: err } = await supabase.auth.signUp({
+        const { data, error: err } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { display_name: displayName || email.split("@")[0] } },
+          options: {
+            data: { display_name: displayName || email.split("@")[0] },
+            // Where the confirmation link lands. Must be listed in Supabase →
+            // Authentication → URL Configuration → Redirect URLs, or
+            // Supabase silently falls back to the Site URL.
+            emailRedirectTo: authRedirectTo("/onboarding"),
+          },
         });
         if (err) throw err;
-        track("signup_completed");
-        navigate(from, { replace: true });
+        track("signup_completed", { needs_confirmation: !data.session });
+        if (data.session) navigate(from, { replace: true });
+        else setMode("check");
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+        if (err?.code === "email_not_confirmed" || /not confirmed/i.test(err?.message ?? "")) {
+          setUnconfirmed(true);
+          throw new Error("Votre adresse n'est pas encore confirmée : cliquez sur le lien reçu par e-mail.");
+        }
         if (err) throw err;
         track("login_completed");
         navigate(from, { replace: true });
       }
     } catch (err) {
       track("auth_error", { mode, message: String(err.message).slice(0, 120) });
-      setError(err.message);
+      setError(frenchAuthError(err.message));
     } finally {
       setBusy(false);
     }
@@ -63,6 +80,60 @@ export function AuthScreen() {
     });
     if (err) setError(err.message);
   };
+
+  const resendConfirmation = async () => {
+    setResend("sending");
+    const { error: err } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: authRedirectTo("/onboarding") },
+    });
+    setResend(err ? "error" : "sent");
+    track("signup_email_resent", { ok: !err });
+  };
+
+  if (mode === "check") {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">
+          <div className="auth-brand">
+            <span className="auth-brand__mark">
+              <Icon name="compass" size={16} />
+            </span>
+            <span className="auth-brand__name">{APP_NAME}</span>
+          </div>
+          <div className="auth-mail-icon" aria-hidden="true">
+            <Icon name="envelope-simple" size={26} />
+          </div>
+          <h1 className="auth-title">Vérifiez votre boîte mail.</h1>
+          <p className="auth-subtitle">
+            Nous avons envoyé un lien de confirmation à <strong>{email}</strong>. Cliquez dessus pour activer votre compte : vous
+            arriverez directement sur le choix de vos sujets.
+          </p>
+          <ul className="auth-tips">
+            <li>Le message peut mettre une minute à arriver.</li>
+            <li>Pas reçu ? Regardez dans les spams ou les promotions.</li>
+            <li>Ouvrez le lien sur ce même appareil pour être connecté directement.</li>
+          </ul>
+          {resend === "sent" && <div className="auth-info">Nouvel e-mail envoyé.</div>}
+          {resend === "error" && <div className="auth-error">L'envoi a échoué. Réessayez dans une minute.</div>}
+          <button className="btn-accent" type="button" onClick={resendConfirmation} disabled={resend === "sending" || resend === "sent"} style={{ width: "100%", marginTop: 16 }}>
+            {resend === "sending" ? "Envoi…" : resend === "sent" ? "E-mail renvoyé" : "Renvoyer l'e-mail"}
+          </button>
+          <button
+            className="auth-switch"
+            onClick={() => {
+              setMode("login");
+              setError(null);
+              setInfo(null);
+            }}
+          >
+            J'ai confirmé mon adresse : me connecter
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const titles = {
     login: ["Content de vous revoir.", "Reprenez votre rythme là où vous l'avez laissé."],
@@ -133,6 +204,11 @@ export function AuthScreen() {
           )}
 
           {error && <div className="auth-error">{error}</div>}
+          {unconfirmed && mode === "login" && (
+            <button type="button" className="auth-forgot" onClick={resendConfirmation} disabled={resend === "sending" || resend === "sent"}>
+              {resend === "sent" ? "Lien de confirmation renvoyé" : "Renvoyer le lien de confirmation"}
+            </button>
+          )}
           {info && <div className="auth-info">{info}</div>}
 
           <button className="btn-accent" type="submit" disabled={busy} style={{ width: "100%", marginTop: 8 }}>
@@ -154,4 +230,15 @@ export function AuthScreen() {
       </div>
     </div>
   );
+}
+
+// Supabase error messages are in English; translate the ones people hit.
+function frenchAuthError(message = "") {
+  if (/invalid login credentials/i.test(message)) return "E-mail ou mot de passe incorrect.";
+  if (/already registered|already been registered/i.test(message))
+    return "Un compte existe déjà avec cette adresse. Connectez-vous, ou utilisez « Mot de passe oublié ».";
+  if (/password should be at least/i.test(message)) return "Le mot de passe doit faire au moins 6 caractères.";
+  if (/rate limit|too many/i.test(message)) return "Trop de tentatives. Réessayez dans quelques minutes.";
+  if (/invalid email|unable to validate email/i.test(message)) return "Cette adresse e-mail n'est pas valide.";
+  return message;
 }

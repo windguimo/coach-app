@@ -7,6 +7,7 @@ import { fetchDemoLesson, isQuizReady, parseDemoLesson } from "../lib/demoLesson
 import { setPendingTopic } from "../lib/pendingTopic";
 import { bigCelebration } from "../lib/celebrate";
 import { track } from "../lib/analytics";
+import { hasPendingAuthReturn } from "../lib/authReturn";
 import { APP_NAME, ONBOARDING_TOPICS } from "../data/content";
 import "./SessionScreen.css";
 import "./LandingScreen.css";
@@ -22,6 +23,9 @@ export function LandingRoute() {
   const { session, loading } = useAuth();
   if (loading) return null;
   if (session) return <Navigate to="/today" replace />;
+  // Back from an email link without a session (expired link, or confirmed
+  // in another browser): the login screen explains what to do next.
+  if (hasPendingAuthReturn()) return <Navigate to="/login" replace />;
   return <LandingScreen />;
 }
 
