@@ -4,6 +4,7 @@ import { Icon } from "../components/Icon";
 import { useAuth } from "../lib/auth";
 import { useProfile, levelFromXp } from "../hooks/useProfile";
 import { useSubjects } from "../hooks/useSubjects";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import { useNotions } from "../hooks/useNotions";
 import { subjectMasteryPct } from "../lib/mastery";
 import { supabase } from "../lib/supabaseClient";
@@ -23,6 +24,7 @@ const DAY_NAMES = [
 
 export function ProfileScreen() {
   const { session } = useAuth();
+  const isAdmin = useIsAdmin();
   const { profile, loading } = useProfile();
   const { subjects, loading: subjectsLoading, refresh: refreshSubjects } = useSubjects();
   const { notions, loading: notionsLoading } = useNotions();
@@ -90,6 +92,14 @@ export function ProfileScreen() {
       </div>
 
       {memberSince && <p className="profile-since">Membre depuis {memberSince}</p>}
+
+      {isAdmin && (
+        <Link to="/admin" className="profile-admin-link">
+          <Icon name="chart-bar" size={16} />
+          Tableau de bord (admin)
+          <Icon name="arrow-right" size={14} style={{ marginLeft: "auto" }} />
+        </Link>
+      )}
 
       <div className="profile-section">
         <div className="profile-section__head">

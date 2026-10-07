@@ -93,7 +93,25 @@ function buildLessonTool(paragraphCount: number, quizCount: number) {
   };
 }
 
-async function generateLesson(subjectLabel: string, moduleIndex: number, paragraphCount: number, quizCount: number) {
+const MODEL = "claude-sonnet-5";
+
+// One row per Anthropic call in llm_usage (migration 0014) — token counts
+// from the API's `usage`; cost_usd is computed by a trigger from
+// llm_prices. Logging failures never break the session.
+async function logUsage(admin: any, row: Record<string, unknown>) {
+  const { error } = await admin.from("llm_usage").insert({ function_name: "generate-session", model: MODEL, ...row });
+  if (error) console.error("llm_usage insert failed:", error.message);
+}
+
+async function generateLesson(
+  subjectLabel: string,
+  moduleIndex: number,
+  paragraphCount: number,
+  quizCount: number,
+  usageCtx: { admin: any; userId: string; topicSlug: string },
+) {
+  const startedAt = Date.now();
+  const logCtx = { user_id: usageCtx.userId, topic_slug: usageCtx.topicSlug };
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -102,7 +120,7 @@ async function generateLesson(subjectLabel: string, moduleIndex: number, paragra
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-5",
+      model: MODEL,
       max_tokens: 4000,
       thinking: { type: "disabled" },
       output_config: { effort: "low" },
@@ -126,11 +144,23 @@ async function generateLesson(subjectLabel: string, moduleIndex: number, paragra
 
   if (!res.ok) {
     const text = await res.text();
+    await logUsage(usageCtx.admin, { ...logCtx, duration_ms: Date.now() - startedAt, ok: false, error: `HTTP ${res.status}` });
     throw new Error(`Anthropic API error ${res.status}: ${text}`);
   }
 
   const data = await res.json();
   const toolUse = data.content?.find((b: any) => b.type === "tool_use" && b.name === "emit_lesson");
+  const usage = data.usage ?? {};
+  await logUsage(usageCtx.admin, {
+    ...logCtx,
+    input_tokens: usage.input_tokens ?? 0,
+    output_tokens: usage.output_tokens ?? 0,
+    cache_creation_tokens: usage.cache_creation_input_tokens ?? 0,
+    cache_read_tokens: usage.cache_read_input_tokens ?? 0,
+    duration_ms: Date.now() - startedAt,
+    ok: Boolean(toolUse),
+    error: toolUse ? null : `no tool call (stop_reason: ${data.stop_reason})`,
+  });
   if (!toolUse) throw new Error("Claude did not return the expected tool call");
   return toolUse.input;
 }
@@ -285,7 +315,11 @@ Deno.serve(async (req) => {
       // Shared cache hit — reuse existing content, no Claude call.
       await admin.from("content_library").update({ reuse_count: content.reuse_count + 1 }).eq("id", content.id);
     } else {
-      const lesson = await generateLesson(subject.label, moduleIndex, paragraphCount, quizCount);
+      const lesson = await generateLesson(subject.label, moduleIndex, paragraphCount, quizCount, {
+        admin,
+        userId: user.id,
+        topicSlug,
+      });
       content = await writeLibraryContent(admin, topicSlug, subject.label, moduleIndex, targetMinutes, lesson);
     }
 

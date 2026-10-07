@@ -19,7 +19,8 @@ Claude pour un "module" de son sujet. Progression suivie via XP, séries
 ```
 src/
   screens/        # une vue par route : Landing ("/"), Auth, Onboarding, Today,
-                  # Session, Révisions, Planning, Profile, Progress, ResetPassword
+                  # Session, Révisions, Planning, Profile, Progress,
+                  # ResetPassword, Admin (dashboard privé)
   hooks/          # tout l'accès Supabase passe par des hooks (use*.js)
   components/     # composants partagés (AppShell, Sidebar, BottomTabBar,
                   # QuizOptions — partagé entre Session et Révisions…)
@@ -31,7 +32,7 @@ src/
     push.js               # abonnement Web Push (rappels quotidiens)
     ics.js                 # export .ics des séances à venir
     installPrompt.js        # détection plateforme/standalone, état PWA
-    analytics.js              # log d'événements (voir app_events)
+    analytics.js              # tracking first-party (voir section Analytics)
     celebrate.js               # confettis/vibration (quiz, fin de séance)
     demoLesson.js               # client streaming de la démo publique
     pendingTopic.js              # sujet tapé sur la landing → onboarding
@@ -39,7 +40,7 @@ src/
 
 supabase/
   migrations/            # schéma SQL, cumulatif, à appliquer dans l'ordre
-                          # (0001…0012 à ce jour — voir chaque fichier pour
+                          # (0001…0014 à ce jour — voir chaque fichier pour
                           # ce qu'il ajoute, pas de renumérotation a posteriori)
   functions/
     generate-session/    # Edge Function : génère (ou réutilise) un module de cours
@@ -73,9 +74,8 @@ supabase/
   préférence par appareil, pas par compte) puis fige la décision : ne pas
   la re-dériver à chaque render, `shouldShowInstallPrompt()` bascule à
   "non" dès qu'elle est enregistrée comme affichée.
-- `app_events` (migration 0011) journalise le funnel d'installation +
-  permissions push (`src/lib/analytics.js`, insert fire-and-forget,
-  `user_id` par défaut `auth.uid()`).
+- `app_events` (migration 0011, étendue en 0013) journalise le funnel
+  d'installation + permissions push — voir section Analytics.
 
 ## Déploiement — piège à connaître
 
@@ -165,6 +165,54 @@ par : cache `demo_lessons` par `slugify_topic` (rejoué gratuitement),
 migration 0012, RLS sans policy = service-role uniquement). Contenu démo
 volontairement séparé de `content_library`. Le CTA mémorise le sujet
 (`pendingTopic.js`, localStorage) et `useOnboarding` le pré-sélectionne.
+
+## Analytics + dashboard admin
+
+Tracking **first-party**, sans outil tiers : tout va dans `app_events`
+via `track(event, props)` (`src/lib/analytics.js`, fire-and-forget).
+Chaque événement porte `anon_id` (id aléatoire par appareil en
+localStorage, identique avant/après inscription → relie tout le parcours),
+`session_id` (une visite, renouvelée après 30 min d'inactivité), `path`,
+`platform`, `props`, et `user_id` (défaut `auth.uid()`, null pour un
+visiteur déconnecté — insert anonyme autorisé par RLS, lecture jamais).
+Pas d'IP ni de user agent stockés. Durée de visite = dernier − premier
+événement de la session, rendue fiable par un `heartbeat` toutes les 30 s
+(onglet visible + interaction < 3 min).
+
+Événements émis : `page_view` (chaque route, avec `ref` = utm_source ou
+site d'origine), `heartbeat`, `demo_started/completed/refused/error/
+answered`, `signup_cta_clicked`, `signup_completed`, `login_completed`,
+`auth_error`, `onboarding_completed/error`, `session_ready` (temps de
+génération), `session_error`, `session_started/answer/completed`
+(`props.module_id` relie une séance), `revision_answer`, + les
+événements PWA/push existants. En ajouter un : appeler `track()` puis, si
+le dashboard doit l'afficher, l'ajouter à `analytics_dashboard()` dans une
+**nouvelle** migration et à `EVENT_LABELS` dans `AdminScreen.jsx`.
+
+Dashboard : `/admin` (lien dans Profil, visible seulement si `is_admin()`).
+Tout vient d'une RPC, `admin_dashboard(p_days, p_include_admin)`, qui
+vérifie `public.admins` puis appelle `analytics_dashboard(...)`. L'usage
+des admins (leurs comptes + tous les appareils qu'ils ont utilisés) est
+exclu par défaut. Ajouter un admin : `insert into public.admins (user_id)
+select id from auth.users where email = '…'` (à la main, jamais dans une
+migration). **Pour analyser les stats avec l'utilisateur**, interroger
+directement via MCP : `select public.analytics_dashboard(30)` (non exposée
+aux clients, accessible en SQL), ou `app_events` en SQL libre pour des
+questions plus fines.
+
+## Coûts LLM
+
+Chaque appel Anthropic (`generate-session`, `demo-lesson`) écrit une ligne
+dans `llm_usage` (migration 0014) : tokens lus/écrits/cache issus du
+`usage` de l'API, durée, succès. `cost_usd` est calculé **à l'insertion**
+par un trigger depuis `llm_prices` (USD / million de tokens) : un
+changement de tarif = un `update llm_prices`, sans redéploiement, et les
+lignes passées gardent le prix payé. **Si une nouvelle fonction appelle
+Claude ou si le modèle change**, y ajouter le même log et insérer la ligne
+de prix du modèle (sinon coût = 0). Agrégats : `llm_costs(days)` (SQL
+seulement), fusionné dans `admin_dashboard` sous la clé `llm` (section
+« Coûts IA » du dashboard). Les appels antérieurs au 7 oct. 2026 ne sont
+pas mesurés. Ordre de grandeur constaté : une démo ≈ 0,008 $.
 
 ## Flux de génération de session
 

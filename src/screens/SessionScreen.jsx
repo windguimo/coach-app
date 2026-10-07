@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { QuizOptions } from "../components/QuizOptions";
@@ -9,6 +9,7 @@ import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useGeneratedSession } from "../hooks/useGeneratedSession";
 import { useQuizFlow } from "../hooks/useQuizFlow";
 import { useSubjects } from "../hooks/useSubjects";
+import { track } from "../lib/analytics";
 import "./SessionScreen.css";
 
 export function SessionScreen() {
@@ -16,7 +17,23 @@ export function SessionScreen() {
   const [params] = useSearchParams();
   const subjectId = params.get("subject");
   const { data, loading, error, recordAttempt, regenerate } = useGeneratedSession(subjectId);
-  const quiz = useQuizFlow(data?.quiz_questions, recordAttempt);
+  const moduleId = data?.course_module?.id ?? null;
+  const quiz = useQuizFlow(data?.quiz_questions, recordAttempt, (answer) =>
+    track("session_answer", { module_id: moduleId, ...answer })
+  );
+
+  // Once per module shown (not per re-render / re-mount of the same one).
+  const startedFor = useRef(null);
+  useEffect(() => {
+    if (!moduleId || startedFor.current === moduleId) return;
+    startedFor.current = moduleId;
+    track("session_started", {
+      module_id: moduleId,
+      subject_id: subjectId,
+      module_index: data.course_module.module_index ?? null,
+      questions: data.quiz_questions?.length ?? 0,
+    });
+  }, [moduleId, subjectId, data]);
   const { subjects } = useSubjects();
   const subjectLabel = subjects.find((s) => s.id === subjectId)?.label;
   const [finished, setFinished] = useState(false);
@@ -59,7 +76,15 @@ export function SessionScreen() {
     return <SessionComplete quiz={quiz} notionId={data.course_module.notion_id} streakBefore={streakBefore} />;
   }
 
-  const finish = () => setFinished(true);
+  const finish = () => {
+    track("session_completed", {
+      module_id: moduleId,
+      correct: quiz.correctCount,
+      total: quiz.total,
+      xp: quiz.sessionXp,
+    });
+    setFinished(true);
+  };
 
   return isDesktop ? (
     <SessionDesktop courseModule={data.course_module} quiz={quiz} onFinish={finish} />

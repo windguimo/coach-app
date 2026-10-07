@@ -7,6 +7,7 @@ import { isStandalone } from "../lib/installPrompt";
 import { fetchDemoLesson, isQuizReady, parseDemoLesson } from "../lib/demoLesson";
 import { setPendingTopic } from "../lib/pendingTopic";
 import { bigCelebration } from "../lib/celebrate";
+import { track } from "../lib/analytics";
 import { APP_NAME, ONBOARDING_TOPICS } from "../data/content";
 import "./SessionScreen.css";
 import "./LandingScreen.css";
@@ -105,9 +106,11 @@ function LandingScreen() {
     if (answered) setTimeout(() => ctaRef.current?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }), 700);
   }, [answered]);
 
-  const generate = async (value) => {
+  const generate = async (value, via = "input") => {
     const t = value.replace(/\s+/g, " ").trim();
     if (t.length < 2 || status === "waiting" || status === "streaming") return;
+    track("demo_started", { topic: t, via });
+    const startedAt = Date.now();
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -119,7 +122,7 @@ function LandingScreen() {
     setStatus("waiting");
     requestAnimationFrame(() => demoRef.current?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" }));
     try {
-      await fetchDemoLesson(t, {
+      const text = await fetchDemoLesson(t, {
         signal: controller.signal,
         onText: (text) => {
           setRaw(text);
@@ -127,16 +130,25 @@ function LandingScreen() {
         },
       });
       setStatus("done");
+      const refused = parseDemoLesson(text).refusal;
+      track(refused ? "demo_refused" : "demo_completed", { topic: t, ms: Date.now() - startedAt });
     } catch (err) {
       if (err.name === "AbortError") return;
+      track("demo_error", { topic: t, code: err.code || "network" });
       setError({ message: err.message, code: err.code });
       setStatus("error");
     }
   };
 
-  const signup = () => {
+  const signup = (where) => {
+    track("signup_cta_clicked", { where, topic: topic || null });
     if (topic && !full.refusal) setPendingTopic(topic);
     navigate("/login", { state: { mode: "signup", from: { pathname: "/onboarding" } } });
+  };
+
+  const pickAnswer = (i) => {
+    setPicked(i);
+    track("demo_answered", { topic, correct: i === question.correct_index });
   };
 
   const busy = status === "waiting" || status === "streaming";
@@ -194,7 +206,7 @@ function LandingScreen() {
 
         <div className="landing__chips">
           {SUGGESTIONS.map((s) => (
-            <button key={s} className="landing__chip" onClick={() => generate(s)} disabled={busy}>
+            <button key={s} className="landing__chip" onClick={() => generate(s, "chip")} disabled={busy}>
               {s}
             </button>
           ))}
@@ -224,12 +236,12 @@ function LandingScreen() {
               <div className="landing__error">
                 <p>{error?.message}</p>
                 {error?.code === "rate_limited" ? (
-                  <button className="btn-accent" onClick={signup}>
+                  <button className="btn-accent" onClick={() => signup("rate_limited")}>
                     Créer mon compte
                     <Icon name="arrow-right" size={15} />
                   </button>
                 ) : (
-                  <button className="btn-accent" onClick={() => generate(topic)}>
+                  <button className="btn-accent" onClick={() => generate(topic, "retry")}>
                     Réessayer
                   </button>
                 )}
@@ -277,7 +289,7 @@ function LandingScreen() {
                 <div className="eyebrow">À vous de jouer</div>
               </div>
               <h3 className="landing__question">{question.prompt}</h3>
-              <QuizOptions question={question} picked={picked} answered={answered} onPick={setPicked} />
+              <QuizOptions question={question} picked={picked} answered={answered} onPick={pickAnswer} />
               {answered && (
                 <div className="verdict-card">
                   <div className="verdict-card__head">
@@ -301,7 +313,7 @@ function LandingScreen() {
                     Un parcours complet sur « {topic} », à votre rythme, avec des rappels, une série à tenir et des
                     révisions des notions qui résistent.
                   </p>
-                  <button className="btn-accent landing__cta-btn" onClick={signup}>
+                  <button className="btn-accent landing__cta-btn" onClick={() => signup("after_demo")}>
                     Créer mon compte gratuit
                     <Icon name="arrow-right" size={15} />
                   </button>
@@ -332,7 +344,7 @@ function LandingScreen() {
       </section>
 
       <footer className="landing__footer">
-        <button className="btn-accent" onClick={signup}>
+        <button className="btn-accent" onClick={() => signup("footer")}>
           Commencer gratuitement
         </button>
       </footer>

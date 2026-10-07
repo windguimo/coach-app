@@ -39,6 +39,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // stable) so no extra secret is required to deploy.
 const IP_SALT = Deno.env.get("DEMO_IP_SALT") ?? SUPABASE_SERVICE_ROLE_KEY.slice(-24);
 
+const MODEL = "claude-sonnet-5";
 const PER_IP_DAILY = 3;
 const GLOBAL_DAILY = 200;
 
@@ -162,6 +163,20 @@ Deno.serve(async (req) => {
   }
   await admin.from("demo_requests").insert({ ip_hash: ipHash, topic_slug: slug });
 
+  const startedAt = Date.now();
+  // One row per Anthropic call in llm_usage (migration 0014); cost_usd is
+  // computed by a trigger from llm_prices.
+  const logUsage = async (row: Record<string, unknown>) => {
+    const { error } = await admin.from("llm_usage").insert({
+      function_name: "demo-lesson",
+      model: MODEL,
+      topic_slug: slug,
+      duration_ms: Date.now() - startedAt,
+      ...row,
+    });
+    if (error) console.error("llm_usage insert failed:", error.message);
+  };
+
   const upstream = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -170,7 +185,7 @@ Deno.serve(async (req) => {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-5",
+      model: MODEL,
       max_tokens: 1200,
       stream: true,
       thinking: { type: "disabled" },
@@ -182,6 +197,7 @@ Deno.serve(async (req) => {
 
   if (!upstream.ok || !upstream.body) {
     console.error("Anthropic error", upstream.status, await upstream.text().catch(() => ""));
+    await logUsage({ ok: false, error: `HTTP ${upstream.status}` });
     return json({ error: "La génération a échoué, réessayez dans un instant.", code: "upstream" }, 502);
   }
 
@@ -191,6 +207,8 @@ Deno.serve(async (req) => {
   const decoder = new TextDecoder();
   let full = "";
   let sseBuffer = "";
+  const usage = { input_tokens: 0, output_tokens: 0, cache_creation_tokens: 0, cache_read_tokens: 0 };
+  let streamError: string | null = null;
 
   const out = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -211,7 +229,17 @@ Deno.serve(async (req) => {
             } catch {
               continue;
             }
-            if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+            if (evt.type === "message_start") {
+              const u = evt.message?.usage ?? {};
+              usage.input_tokens = u.input_tokens ?? 0;
+              usage.cache_creation_tokens = u.cache_creation_input_tokens ?? 0;
+              usage.cache_read_tokens = u.cache_read_input_tokens ?? 0;
+              usage.output_tokens = u.output_tokens ?? 0;
+            } else if (evt.type === "message_delta" && evt.usage?.output_tokens != null) {
+              usage.output_tokens = evt.usage.output_tokens; // cumulative
+            } else if (evt.type === "error") {
+              streamError = evt.error?.type ?? "stream error";
+            } else if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
               full += evt.delta.text;
               controller.enqueue(encoder.encode(evt.delta.text));
             }
@@ -219,9 +247,12 @@ Deno.serve(async (req) => {
         }
       } catch (err) {
         console.error("stream error", err);
+        streamError = String(err).slice(0, 200);
       } finally {
         controller.close();
       }
+
+      await logUsage({ ...usage, ok: !streamError, error: streamError });
 
       const text = full.trim();
       if (isWellFormed(text)) {

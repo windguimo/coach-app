@@ -265,3 +265,15 @@
 .profile-signout:hover {
   background: var(--surface);
 }
+
+.profile-admin-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 13px 15px;
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 14px;
+}

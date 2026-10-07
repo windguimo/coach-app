@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { RequireAuth, useAuth } from "./lib/auth";
-import { isStandalone, platform } from "./lib/installPrompt";
-import { logEvent } from "./lib/analytics";
+import { isStandalone } from "./lib/installPrompt";
+import { logEvent, startHeartbeat, trackPageView } from "./lib/analytics";
 import { AuthScreen } from "./screens/AuthScreen";
 import { LandingRoute } from "./screens/LandingScreen";
+import { AdminScreen } from "./screens/AdminScreen";
 import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { TodayScreen } from "./screens/TodayScreen";
 import { PlanningScreen } from "./screens/PlanningScreen";
@@ -19,10 +20,17 @@ function App() {
   const { session } = useAuth();
 
   useEffect(() => {
-    if (session && isStandalone()) logEvent("app_opened_standalone", platform());
+    if (session && isStandalone()) logEvent("app_opened_standalone");
     // Once per sign-in, not on every re-render (session reference is
     // stable across renders while the same user stays signed in).
   }, [session]);
+
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location.pathname]);
+
+  useEffect(() => startHeartbeat(), []);
 
   return (
     <Routes>
@@ -91,6 +99,16 @@ function App() {
         element={
           <RequireAuth>
             <SessionScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <AdminScreen />
+            </AppShell>
           </RequireAuth>
         }
       />

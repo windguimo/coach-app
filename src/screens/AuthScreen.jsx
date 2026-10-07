@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { authRedirectTo, supabase } from "../lib/supabaseClient";
 import { APP_NAME } from "../data/content";
+import { track } from "../lib/analytics";
 import "./AuthScreen.css";
 
 export function AuthScreen() {
@@ -29,6 +30,7 @@ export function AuthScreen() {
           redirectTo: authRedirectTo("/reset-password"),
         });
         if (err) throw err;
+        track("password_reset_requested");
         setInfo("Email envoyé — cliquez sur le lien qu'il contient pour choisir un nouveau mot de passe.");
       } else if (mode === "signup") {
         const { error: err } = await supabase.auth.signUp({
@@ -37,13 +39,16 @@ export function AuthScreen() {
           options: { data: { display_name: displayName || email.split("@")[0] } },
         });
         if (err) throw err;
+        track("signup_completed");
         navigate(from, { replace: true });
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
+        track("login_completed");
         navigate(from, { replace: true });
       }
     } catch (err) {
+      track("auth_error", { mode, message: String(err.message).slice(0, 120) });
       setError(err.message);
     } finally {
       setBusy(false);
