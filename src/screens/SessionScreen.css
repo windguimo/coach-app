@@ -415,3 +415,31 @@
 .session-mobile__footer {
   padding: 0 20px 34px;
 }
+
+/* ─── Mobile course step ─── */
+
+.session-mobile__course {
+  padding: 22px 20px 0;
+}
+
+.session-mobile__course .course-content__title {
+  font-size: 24px;
+}
+
+.session-mobile__footer--sticky {
+  position: sticky;
+  bottom: 0;
+  padding-top: 14px;
+  background: linear-gradient(transparent, var(--bg) 14px);
+}
+
+.session-mobile__back-to-course {
+  flex: none;
+  border: none;
+  background: none;
+  padding: 4px 0;
+  font: 400 12.5px var(--font-body);
+  color: var(--ink-62);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
