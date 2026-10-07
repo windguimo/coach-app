@@ -18,8 +18,8 @@ Claude pour un "module" de son sujet. Progression suivie via XP, séries
 
 ```
 src/
-  screens/        # une vue par route : Auth, Onboarding, Today, Session,
-                  # Révisions, Planning, Profile, Progress, ResetPassword
+  screens/        # une vue par route : Landing ("/"), Auth, Onboarding, Today,
+                  # Session, Révisions, Planning, Profile, Progress, ResetPassword
   hooks/          # tout l'accès Supabase passe par des hooks (use*.js)
   components/     # composants partagés (AppShell, Sidebar, BottomTabBar,
                   # QuizOptions — partagé entre Session et Révisions…)
@@ -32,15 +32,19 @@ src/
     ics.js                 # export .ics des séances à venir
     installPrompt.js        # détection plateforme/standalone, état PWA
     analytics.js              # log d'événements (voir app_events)
+    celebrate.js               # confettis/vibration (quiz, fin de séance)
+    demoLesson.js               # client streaming de la démo publique
+    pendingTopic.js              # sujet tapé sur la landing → onboarding
   sw.js                   # source du service worker (voir section PWA)
 
 supabase/
   migrations/            # schéma SQL, cumulatif, à appliquer dans l'ordre
-                          # (0001…0011 à ce jour — voir chaque fichier pour
+                          # (0001…0012 à ce jour — voir chaque fichier pour
                           # ce qu'il ajoute, pas de renumérotation a posteriori)
   functions/
     generate-session/    # Edge Function : génère (ou réutilise) un module de cours
     send-reminders/       # Edge Function : rappel push quotidien (cron)
+    demo-lesson/          # Edge Function publique (sans JWT) : démo de la landing
 ```
 
 ## PWA (manifest, service worker, installation)
@@ -87,11 +91,14 @@ aux deux après avoir touché au schéma ou à une Edge Function :
   main donc n'apparaissent pas dans `list_migrations` — seules celles passées
   par `apply_migration` (0011 et suivantes) y sont trackées ; ça n'a pas
   d'incidence, juste une explication si le tracking semble incomplet.
-- **Edge Functions** (`generate-session`, `send-reminders`) : redéployer avec
+- **Edge Functions** (`generate-session`, `send-reminders`, `demo-lesson`) : redéployer avec
   `npx supabase functions deploy <nom-de-la-fonction>` depuis la racine du
   repo (après `npx supabase login` puis `npx supabase link --project-ref
-  xrmjhsgeipshejfwdklh`, une fois par machine). Pas d'équivalent MCP fiable
-  observé pour ça dans cette session — CLI toujours nécessaire.
+  xrmjhsgeipshejfwdklh`, une fois par machine), ou via
+  `mcp__Supabase__deploy_edge_function` (utilisé avec succès pour
+  `demo-lesson`). `demo-lesson` doit rester **sans vérification JWT**
+  (`--no-verify-jwt` en CLI, `verify_jwt: false` en MCP) — sinon la démo
+  renvoie 401 aux visiteurs.
 
 Oublier l'un des deux après un changement de schéma produit des erreurs
 trompeuses : une fonction pas redéployée qui référence une colonne/relation
@@ -144,6 +151,20 @@ de `course_modules` (pointeur par utilisateur, RLS-scopé) et traverse
 côté client. Si tu touches au schéma de contenu, vérifie cette requête —
 c'est le seul autre endroit (avec `generate-session`) qui lit
 `content_library_questions`.
+
+## Landing publique + démo live
+
+"/" affiche `LandingScreen` aux visiteurs déconnectés (connecté → /today,
+PWA installée → /login). Le visiteur tape un sujet : l'Edge Function
+`demo-lesson` stream un mini-cours + 1 question en texte brut à format
+lignes (`TITRE:`, `§`, `RETENIR:`, `QUESTION:`, `A)`…`D)`, `REPONSE:`,
+`EXPLICATION:`, ou `REFUS:`), parsé côté client (`src/lib/demoLesson.js`)
+et affiché en machine à écrire. Fonction **ouverte sans JWT** — coût borné
+par : cache `demo_lessons` par `slugify_topic` (rejoué gratuitement),
+3 générations/IP hashée/24 h et 200/24 h au global (`demo_requests`,
+migration 0012, RLS sans policy = service-role uniquement). Contenu démo
+volontairement séparé de `content_library`. Le CTA mémorise le sujet
+(`pendingTopic.js`, localStorage) et `useOnboarding` le pré-sélectionne.
 
 ## Flux de génération de session
 

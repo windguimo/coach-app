@@ -6,7 +6,9 @@ import { APP_NAME } from "../data/content";
 import "./AuthScreen.css";
 
 export function AuthScreen() {
-  const [mode, setMode] = useState("login"); // 'login' | 'signup' | 'forgot'
+  const location = useLocation();
+  // The landing page sends visitors here with state.mode = "signup".
+  const [mode, setMode] = useState(location.state?.mode === "signup" ? "signup" : "login"); // 'login' | 'signup' | 'forgot'
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -14,7 +16,6 @@ export function AuthScreen() {
   const [info, setInfo] = useState(null);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
   const from = location.state?.from?.pathname || "/today";
 
   const submit = async (e) => {
