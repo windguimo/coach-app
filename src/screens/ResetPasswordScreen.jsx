@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { supabase } from "../lib/supabaseClient";
+import { APP_NAME } from "../data/content";
 import "./AuthScreen.css";
 
 export function ResetPasswordScreen() {
@@ -30,7 +31,7 @@ export function ResetPasswordScreen() {
           <span className="auth-brand__mark">
             <Icon name="compass" size={16} />
           </span>
-          <span className="auth-brand__name">Coach</span>
+          <span className="auth-brand__name">{APP_NAME}</span>
         </div>
 
         <h1 className="auth-title">Nouveau mot de passe</h1>

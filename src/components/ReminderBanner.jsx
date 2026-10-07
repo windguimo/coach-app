@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { isPushSubscribed, pushSupported, subscribeToPush } from "../lib/push";
+import { isIOS, isStandalone } from "../lib/installPrompt";
 import "./ReminderBanner.css";
 
 export function ReminderBanner() {
@@ -12,6 +13,12 @@ export function ReminderBanner() {
     let cancelled = false;
     (async () => {
       if (!pushSupported()) return;
+      // iOS only delivers Web Push to an installed (standalone) PWA — a
+      // subscribe() in a regular Safari tab "succeeds" but never actually
+      // receives anything. InstallPrompt already tells iOS users this and
+      // points them at installing first, so this banner stays out of the
+      // way until they're running standalone.
+      if (isIOS() && !isStandalone()) return;
       const already = await isPushSubscribed();
       if (!cancelled && !already) setVisible(true);
     })();

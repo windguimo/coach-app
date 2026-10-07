@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
-import { RequireAuth } from "./lib/auth";
+import { RequireAuth, useAuth } from "./lib/auth";
+import { isStandalone, platform } from "./lib/installPrompt";
+import { logEvent } from "./lib/analytics";
 import { AuthScreen } from "./screens/AuthScreen";
 import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { TodayScreen } from "./screens/TodayScreen";
@@ -12,6 +15,14 @@ import { ProfileScreen } from "./screens/ProfileScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 
 function App() {
+  const { session } = useAuth();
+
+  useEffect(() => {
+    if (session && isStandalone()) logEvent("app_opened_standalone", platform());
+    // Once per sign-in, not on every re-render (session reference is
+    // stable across renders while the same user stays signed in).
+  }, [session]);
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/today" replace />} />

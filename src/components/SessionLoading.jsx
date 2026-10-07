@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
+import { APP_NAME } from "../data/content";
 import "./SessionLoading.css";
 
 const STEPS = ["Sélection de la notion", "Rédaction du cours", "Création du quiz"];
@@ -36,7 +37,7 @@ export function SessionLoading({ subjectLabel }) {
           <span className="session-loading__brand-mark">
             <Icon name="compass" size={14} />
           </span>
-          <span>Coach</span>
+          <span>{APP_NAME}</span>
         </div>
 
         <h2 className="session-loading__title">

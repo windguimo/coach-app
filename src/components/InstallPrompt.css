@@ -1,0 +1,91 @@
+.install-prompt {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-line);
+  margin-top: 20px;
+}
+
+.install-prompt__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.install-prompt__icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+}
+
+.install-prompt__title {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.install-prompt__text {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink-62);
+  line-height: 1.5;
+}
+
+.install-prompt__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.install-prompt__actions .btn-accent {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.install-prompt__dismiss {
+  background: none;
+  border: none;
+  font-size: 11.5px;
+  color: var(--ink-45);
+  cursor: pointer;
+}
+
+.install-prompt__steps {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.install-prompt__steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-72);
+}
+
+.install-prompt__step-icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: var(--shadow-line);
+  display: grid;
+  place-items: center;
+  color: var(--ink-62);
+}
+
+.install-prompt__steps strong {
+  font-weight: 500;
+  color: var(--ink);
+}

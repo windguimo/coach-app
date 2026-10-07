@@ -4,6 +4,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useSubjects } from "../hooks/useSubjects";
 import { useNotions } from "../hooks/useNotions";
 import { subjectMasteryPct } from "../lib/mastery";
+import { APP_NAME } from "../data/content";
 import "./Sidebar.css";
 
 const NAV = [
@@ -26,7 +27,7 @@ export function Sidebar() {
         <span className="sidebar__brand-mark">
           <Icon name="compass" size={14} />
         </span>
-        <span className="sidebar__brand-name">Coach</span>
+        <span className="sidebar__brand-name">{APP_NAME}</span>
       </div>
 
       <ul className="sidebar__nav">
