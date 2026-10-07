@@ -3,7 +3,6 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { QuizOptions } from "../components/QuizOptions";
 import { useAuth } from "../lib/auth";
-import { isStandalone } from "../lib/installPrompt";
 import { fetchDemoLesson, isQuizReady, parseDemoLesson } from "../lib/demoLesson";
 import { setPendingTopic } from "../lib/pendingTopic";
 import { bigCelebration } from "../lib/celebrate";
@@ -16,13 +15,13 @@ function reducedMotion() {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-// "/" — public landing for signed-out visitors; signed-in users (and the
-// installed PWA, which has no use for a marketing page) go straight in.
+// "/" — the entry point for everyone signed out (shared link, installed app,
+// after logout): the landing, never the bare login form. Signed-in users go
+// straight to /today.
 export function LandingRoute() {
   const { session, loading } = useAuth();
   if (loading) return null;
   if (session) return <Navigate to="/today" replace />;
-  if (isStandalone()) return <Navigate to="/login" replace />;
   return <LandingScreen />;
 }
 

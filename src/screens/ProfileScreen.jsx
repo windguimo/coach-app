@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { useAuth } from "../lib/auth";
 import { useProfile, levelFromXp } from "../hooks/useProfile";
@@ -25,6 +25,7 @@ const DAY_NAMES = [
 export function ProfileScreen() {
   const { session } = useAuth();
   const isAdmin = useIsAdmin();
+  const navigate = useNavigate();
   const { profile, loading } = useProfile();
   const { subjects, loading: subjectsLoading, refresh: refreshSubjects } = useSubjects();
   const { notions, loading: notionsLoading } = useNotions();
@@ -177,7 +178,10 @@ export function ProfileScreen() {
         </div>
       </div>
 
-      <button className="profile-signout" onClick={() => supabase.auth.signOut()}>
+      <button className="profile-signout" onClick={async () => {
+          await supabase.auth.signOut();
+          navigate("/", { replace: true });
+        }}>
         <Icon name="sign-out" size={16} />
         Se déconnecter
       </button>

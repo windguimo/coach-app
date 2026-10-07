@@ -154,8 +154,9 @@ c'est le seul autre endroit (avec `generate-session`) qui lit
 
 ## Landing publique + démo live
 
-"/" affiche `LandingScreen` aux visiteurs déconnectés (connecté → /today,
-PWA installée → /login). Le visiteur tape un sujet : l'Edge Function
+"/" affiche `LandingScreen` à tout visiteur déconnecté, y compris dans la PWA
+installée et après déconnexion (connecté → /today ; toute route inconnue → "/").
+Le visiteur tape un sujet : l'Edge Function
 `demo-lesson` stream un mini-cours + 1 question en texte brut à format
 lignes (`TITRE:`, `§`, `RETENIR:`, `QUESTION:`, `A)`…`D)`, `REPONSE:`,
 `EXPLICATION:`, ou `REFUS:`), parsé côté client (`src/lib/demoLesson.js`)
