@@ -1,13 +1,32 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
-import { APP_NAME, APP_SHORT_NAME } from './src/data/content.js'
+import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from './src/data/content.js'
+
+// The real, deployed URL — needed as an absolute value for Open Graph/
+// Twitter Card tags (link-preview crawlers don't reliably resolve relative
+// image/url tags the way browsers do). Update if the app ever moves off
+// this GitHub Pages path.
+const SITE_URL = 'https://windguimo.github.io/coach-app/'
+
+// Replaces %APP_NAME%/%APP_TAGLINE% in index.html so the app's name has
+// exactly one source (src/data/content.js) instead of being hand-copied
+// into the HTML too.
+function injectAppInfo() {
+  return {
+    name: 'inject-app-info',
+    transformIndexHtml(html) {
+      return html.replaceAll('%APP_NAME%', APP_NAME).replaceAll('%APP_TAGLINE%', APP_TAGLINE).replaceAll('%SITE_URL%', SITE_URL)
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   base: './',
   plugins: [
     react(),
+    injectAppInfo(),
     VitePWA({
       // injectManifest (not generateSW): src/sw.js is our own service
       // worker (push notifications, offline fallback) — the plugin only
